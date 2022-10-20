@@ -4,16 +4,16 @@ Test for depletion, energy storage should be depleted but should not be charged.
 
 %file: test.ned
 
-import inet.power.storage.SimpleEnergyStorage;
-import inet.power.consumer.AlternatingEnergyConsumer;
-import inet.power.generator.AlternatingEnergyGenerator;
+import inet.power.storage.SimpleEpEnergyStorage;
+import inet.power.consumer.AlternatingEpEnergyConsumer;
+import inet.power.generator.AlternatingEpEnergyGenerator;
 
 network Test
 {
     submodules:
-        energyStorage: SimpleEnergyStorage;
-        energyConsumer: AlternatingEnergyConsumer;
-        energyGenerator: AlternatingEnergyGenerator;
+        energyStorage: SimpleEpEnergyStorage;
+        energyConsumer: AlternatingEpEnergyConsumer;
+        energyGenerator: AlternatingEpEnergyGenerator;
 }
 
 %inifile: omnetpp.ini
@@ -44,8 +44,7 @@ Energy storage depleted
 %not-contains: stdout
 Energy storage charged
 %#--------------------------------------------------------------------------------------------------------------
-%not-contains: stdout
-undisposed object:
-%not-contains: stdout
--- check module destructor
+%postrun-command: grep "undisposed object:" test.out > test_undisposed.out || true
+%not-contains: test_undisposed.out
+undisposed object: (
 %#--------------------------------------------------------------------------------------------------------------

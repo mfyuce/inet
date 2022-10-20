@@ -1,20 +1,9 @@
 //
-// Copyright (C) 2004 Andras Varga
+// Copyright (C) 2004 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-//
+
 
 
 
@@ -22,7 +11,7 @@
 package inet.examples.inet.nclients;
 
 import inet.common.misc.ThruputMeteringChannel;
-import inet.networklayer.configurator.ipv4.IPv4NetworkConfigurator;
+import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
 import inet.node.inet.Router;
 import inet.node.inet.StandardHost;
 
@@ -45,29 +34,26 @@ network NClients
             thruputDisplayFormat = "u";
         }
     submodules:
-        configurator: IPv4NetworkConfigurator {
+        configurator: Ipv4NetworkConfigurator {
             parameters:
-                @display("p=185,50");
+                @display("p=100,100;is=s");
         }
         r1: Router {
-            parameters:
-                @display("p=186,250");
+            @display("p=400,250");
         }
         r2: Router {
-            parameters:
-                @display("p=304,220");
+            @display("p=550,250");
         }
         r3: Router {
-            parameters:
-                @display("p=433,250");
+            @display("p=700,250");
         }
         cli[n]: StandardHost {
             parameters:
-                @display("i=device/laptop");
+                @display("i=device/laptop;p=250,100,col,100");
         }
         srv: StandardHost {
             parameters:
-                @display("p=544,194;i=device/server_l");
+                @display("i=device/server;p=850,250");
         }
     connections:
         for i=0..n-1 {

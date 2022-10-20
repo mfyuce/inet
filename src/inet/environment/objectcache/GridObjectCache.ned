@@ -1,17 +1,9 @@
 //
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-// 
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/.
-// 
+// Copyright (C) 2020 OpenSim Ltd.
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+
 
 package inet.environment.objectcache;
 
@@ -27,12 +19,13 @@ module GridObjectCache like IObjectCache
 {
     parameters:
         string physicalEnvironmentModule = default("^");
-        double cellSizeX @unit(m) = default(0m/0); // NaN means use cell count
-        double cellSizeY @unit(m) = default(0m/0); // NaN means use cell count
-        double cellSizeZ @unit(m) = default(0m/0); // NaN means use cell count
+        double cellSizeX @unit(m) = default(nan m); // NaN means use cell count
+        double cellSizeY @unit(m) = default(nan m); // NaN means use cell count
+        double cellSizeZ @unit(m) = default(nan m); // NaN means use cell count
         int cellCountX = default(10); // divide space to so many cells
         int cellCountY = default(10); // divide space to so many cells
         int cellCountZ = default(10); // divide space to so many cells
         @display("i=block/table2");
         @class(GridObjectCache);
 }
+

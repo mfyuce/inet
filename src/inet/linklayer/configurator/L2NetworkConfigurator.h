@@ -1,21 +1,9 @@
 //
 // Copyright (C) 2013 OpenSim Ltd.
 //
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/.
-//
-// Author: Benjamin Seregi
-//
+
 
 #ifndef __INET_L2NETWORKCONFIGURATOR_H
 #define __INET_L2NETWORKCONFIGURATOR_H
@@ -23,11 +11,10 @@
 #include <algorithm>
 #include <vector>
 
-#include "inet/common/INETDefs.h"
-#include "inet/linklayer/configurator/Ieee8021dInterfaceData.h"
-#include "inet/networklayer/contract/IInterfaceTable.h"
 #include "inet/common/PatternMatcher.h"
 #include "inet/common/Topology.h"
+#include "inet/linklayer/configurator/Ieee8021dInterfaceData.h"
+#include "inet/networklayer/contract/IInterfaceTable.h"
 
 namespace inet {
 
@@ -37,7 +24,7 @@ namespace inet {
 class INET_API L2NetworkConfigurator : public cSimpleModule
 {
   public:
-    L2NetworkConfigurator() { }
+    L2NetworkConfigurator() {}
     typedef Ieee8021dInterfaceData::PortInfo PortInfo;
 
   protected:
@@ -46,8 +33,7 @@ class INET_API L2NetworkConfigurator : public cSimpleModule
     /**
      * Represents a node in the network.
      */
-    class Node : public Topology::Node
-    {
+    class INET_API Node : public Topology::Node {
       public:
         cModule *module;
         IInterfaceTable *interfaceTable;
@@ -55,30 +41,28 @@ class INET_API L2NetworkConfigurator : public cSimpleModule
 
       public:
         Node(cModule *module) : Topology::Node(module->getId()) { this->module = module; interfaceTable = nullptr; }
-        ~Node() { for (int i = 0; i < (int)interfaceInfos.size(); i++) delete interfaceInfos[i]; }
+        ~Node() { for (size_t i = 0; i < interfaceInfos.size(); i++) delete interfaceInfos[i]; }
     };
 
     /**
      * Represents an interface in the network.
      */
-    class InterfaceInfo : public cObject
-    {
+    class INET_API InterfaceInfo : public cObject {
       public:
         Node *node;
         Node *childNode;
-        InterfaceEntry *interfaceEntry;
+        NetworkInterface *networkInterface;
         PortInfo portData;
 
       public:
-        InterfaceInfo(Node *node, Node *childNode, InterfaceEntry *interfaceEntry);
-        virtual std::string getFullPath() const override { return interfaceEntry->getFullPath(); }
+        InterfaceInfo(Node *node, Node *childNode, NetworkInterface *networkInterface);
+        virtual std::string getFullPath() const override { return networkInterface->getInterfaceFullPath(); }
     };
 
-    class Matcher
-    {
+    class INET_API Matcher {
       protected:
         bool matchesany;
-        std::vector<inet::PatternMatcher *> matchers;    // TODO replace with a MatchExpression once it becomes available in OMNeT++
+        std::vector<inet::PatternMatcher *> matchers; // TODO replace with a MatchExpression once it becomes available in OMNeT++
 
       public:
         Matcher(const char *pattern);
@@ -88,8 +72,7 @@ class INET_API L2NetworkConfigurator : public cSimpleModule
         bool matchesAny() { return matchesany; }
     };
 
-    class Link : public Topology::Link
-    {
+    class INET_API Link : public Topology::Link {
       public:
         InterfaceInfo *sourceInterfaceInfo;
         InterfaceInfo *destinationInterfaceInfo;
@@ -98,8 +81,7 @@ class INET_API L2NetworkConfigurator : public cSimpleModule
         Link() { sourceInterfaceInfo = nullptr; destinationInterfaceInfo = nullptr; }
     };
 
-    class L2Topology : public Topology
-    {
+    class INET_API L2Topology : public Topology {
       protected:
         virtual Node *createNode(cModule *module) override { return new L2NetworkConfigurator::Node(module); }
         virtual Link *createLink() override { return new L2NetworkConfigurator::Link(); }
@@ -130,7 +112,7 @@ class INET_API L2NetworkConfigurator : public cSimpleModule
     // helper functions
     virtual bool linkContainsMatchingHostExcept(InterfaceInfo *currentInfo, Matcher& hostMatcher, cModule *exceptModule);
     void ensureConfigurationComputed(L2Topology& topology);
-    virtual Topology::LinkOut *findLinkOut(Node *node, int gateId);
+    virtual Topology::Link *findLinkOut(Node *node, int gateId);
     void configureInterface(InterfaceInfo *interfaceInfo);
 
   public:
@@ -142,10 +124,10 @@ class INET_API L2NetworkConfigurator : public cSimpleModule
     /**
      * Configures the provided interface based on the current network configuration.
      */
-    virtual void configureInterface(InterfaceEntry *interfaceEntry);
+    virtual void configureInterface(NetworkInterface *networkInterface);
 };
 
 } // namespace inet
 
-#endif // ifndef __INET_L2NETWORKCONFIGURATOR_H
+#endif
 

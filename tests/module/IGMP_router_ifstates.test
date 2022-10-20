@@ -1,4 +1,5 @@
-%description: Tests interface state transitions of IGMP routers
+%description:
+Tests interface state transitions of IGMP routers
 
                                      --------------------------------
                               _______|________  gen. query timer      |
@@ -33,9 +34,9 @@
 
 This scenario checks the following trajectory:
 
-INITIAL --> initialize --> QUERIER --> query received (lower IP) --> NON QUERIER --> 
+INITIAL --> initialize --> QUERIER --> query received (lower IP) --> NON QUERIER -->
   --> query received (lower IP) --> NON QUERIER --> other querier present timer expired --> QUERIER -->
-  --> gen.query timer expired --> QUERIER 
+  --> gen.query timer expired --> QUERIER
 
 
 %inifile: omnetpp.ini
@@ -50,8 +51,8 @@ output-scalar-file = "${resultdir}/${configname}-${runnumber}.sca"
 output-vector-file = "${resultdir}/${configname}-${runnumber}.vec"
 snapshot-file = "${resultdir}/${configname}-${runnumber}.sna"
 
-network=IGMPTestNetwork
-**.igmpType = "TestIGMP"
+network = inet.test.moduletest.lib.IGMPTestNetwork
+**.igmp.typename = "TestIGMP"
 
 **.scenarioManager.script = xmldoc("scenario.xml")
 **.nqrouter.*.igmp.outputFile = "nqrouter-output.txt"
@@ -61,7 +62,7 @@ network=IGMPTestNetwork
 
 %file: scenario.xml
 <scenario>
-<disable t="101" module="router.networkLayer.igmp"/>
+<disable t="101" module="router.ipv4.igmp"/>
 </scenario>
 
 %contains-regex: nqrouter-output.txt
@@ -73,8 +74,7 @@ t=100\..* nqrouter/eth0/<unspec>: NON_QUERIER --> query received <> --> NON_QUER
 t=305\..* nqrouter/eth0: NON_QUERIER --> other querier present timer expired <send query> --> QUERIER
 t=405\..* nqrouter/eth0: QUERIER --> gen. query timer expired <send query> --> QUERIER
 %#--------------------------------------------------------------------------------------------------------------
-%not-contains: stdout
-undisposed object:
-%not-contains: stdout
--- check module destructor
+%postrun-command: grep "undisposed object:" test.out > test_undisposed.out || true
+%not-contains: test_undisposed.out
+undisposed object: (
 %#--------------------------------------------------------------------------------------------------------------

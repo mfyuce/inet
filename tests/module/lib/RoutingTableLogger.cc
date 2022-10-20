@@ -1,23 +1,12 @@
 //
-// Copyright (C) 2013 Opensim Ltd.
+// Copyright (C) 2013 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
+
 
 #include <fstream>
 
-#include "inet/common/INETDefs.h"
 #include "inet/common/scenario/IScriptable.h"
 #include "inet/networklayer/contract/IRoutingTable.h"
 #include "inet/networklayer/contract/IL3AddressType.h"
@@ -82,7 +71,6 @@ class INET_API RoutingTableLogger : public cSimpleModule, public IScriptable
     virtual void finish();
     virtual void processCommand(const cXMLElement &node);
   private:
-    IRoutingTable *findRoutingTableInNode(cModule *node);
     void dumpRoutes(cModule *node, IRoutingTable *rt, DestFilter &filter);
 };
 
@@ -104,44 +92,42 @@ void RoutingTableLogger::finish()
     out << "END" << endl;
 }
 
-void RoutingTableLogger::processCommand(const cXMLElement &command)
-{
-  Enter_Method_Silent();
+void RoutingTableLogger::processCommand(const cXMLElement &command) {
+    Enter_Method("processCommand");
 
-  const char *tag = command.getTagName();
+    const char *tag = command.getTagName();
 
-  if (!strcmp(tag, "dump-routes"))
-  {
-    const char *nodes = command.getAttribute("nodes");
-    if (!nodes)
+    if (!strcmp(tag, "dump-routes"))
+    {
+        const char *nodes = command.getAttribute("nodes");
+        if (!nodes)
         throw cRuntimeError("missing @nodes attribute");
 
-    DestFilter filter(command.getAttribute("dest"));
+        DestFilter filter(command.getAttribute("dest"));
 
-    cStringTokenizer tokenizer(nodes);
-    while(tokenizer.hasMoreTokens())
-    {
-        const char *nodeName = tokenizer.nextToken();
-        cModule *node = getModuleByPath(nodeName);
-        if (!node)
+        cStringTokenizer tokenizer(nodes);
+        while(tokenizer.hasMoreTokens())
+        {
+            const char *nodeName = tokenizer.nextToken();
+            cModule *node = getModuleByPath(nodeName);
+            if (!node)
             throw cRuntimeError("module '%s' not found at %s", nodeName, command.getSourceLocation());
+            bool foundRt = false;
 
-        IRoutingTable *rt = findRoutingTableInNode(node);
-        dumpRoutes(node, rt, filter);
+            for (cModule::SubmoduleIterator nl(node); !nl.end(); nl++)
+            {
+                for (cModule::SubmoduleIterator i(*nl); !i.end(); i++)
+                {
+                    if (IRoutingTable *rt = dynamic_cast<IRoutingTable*>(*i)) {
+                        foundRt = true;
+                        dumpRoutes(node, rt, filter);
+                    }
+                }
+            }
+            if (!foundRt)
+                throw cRuntimeError("routing table not found in node '%s'", node->getFullPath().c_str());
+        }
     }
-  }
-}
-
-IRoutingTable *RoutingTableLogger::findRoutingTableInNode(cModule *node)
-{
-    for (cModule::SubmoduleIterator i(node); !i.end(); ++i)
-    {
-        IRoutingTable *rt = dynamic_cast<IRoutingTable*>(*i);
-        if (rt)
-            return rt;
-    }
-
-    return NULL;
 }
 
 void RoutingTableLogger::dumpRoutes(cModule *node, IRoutingTable *rt, DestFilter &filter)
@@ -155,7 +141,7 @@ void RoutingTableLogger::dumpRoutes(cModule *node, IRoutingTable *rt, DestFilter
         {
             out << route->getDestinationAsGeneric() << "/" << route->getPrefixLength()
                 << " " << route->getNextHopAsGeneric()
-                << " " << (route->getInterface() ? route->getInterface()->getName() : "*")
+                << " " << (route->getInterface() ? route->getInterface()->getInterfaceName() : "*")
                 << " " << IRoute::sourceTypeName(route->getSourceType()) << " " << route->getMetric()
                 << endl;
         }

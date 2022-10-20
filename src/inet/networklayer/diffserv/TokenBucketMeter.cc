@@ -1,24 +1,14 @@
 //
-// Copyright (C) 2012 Opensim Ltd.
-// Author: Tamas Borbely
+// Copyright (C) 2012 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
 
+
 #include "inet/networklayer/diffserv/TokenBucketMeter.h"
-#include "inet/networklayer/diffserv/DiffservUtil.h"
+
 #include "inet/common/ModuleAccess.h"
+#include "inet/networklayer/diffserv/DiffservUtil.h"
 
 namespace inet {
 
@@ -28,15 +18,14 @@ Define_Module(TokenBucketMeter);
 
 void TokenBucketMeter::initialize(int stage)
 {
-    cSimpleModule::initialize(stage);
-
+    PacketMeterBase::initialize(stage);
     if (stage == INITSTAGE_LOCAL) {
         numRcvd = 0;
         numRed = 0;
         WATCH(numRcvd);
         WATCH(numRed);
 
-        CBS = 8 * (int)par("cbs");
+        CBS = 8 * par("cbs").intValue();
         colorAwareMode = par("colorAwareMode");
         Tc = CBS;
     }
@@ -48,21 +37,19 @@ void TokenBucketMeter::initialize(int stage)
     }
 }
 
-void TokenBucketMeter::handleMessage(cMessage *msg)
+void TokenBucketMeter::pushPacket(Packet *packet, cGate *inputGate)
 {
-    cPacket *packet = findIPDatagramInPacket(check_and_cast<cPacket *>(msg));
-    if (!packet)
-        throw cRuntimeError("TokenBucketMeter received a packet that does not encapsulate an IP datagram.");
-
     numRcvd++;
+    cGate *outputGate = nullptr;
     int color = meterPacket(packet);
-    if (color == GREEN) {
-        send(packet, "greenOut");
-    }
+    if (color == GREEN)
+        outputGate = gate("greenOut");
     else {
         numRed++;
-        send(packet, "redOut");
+        outputGate = gate("redOut");
     }
+    auto consumer = findConnectedModule<IPassivePacketSink>(outputGate);
+    pushOrSendPacket(packet, outputGate, consumer);
 }
 
 void TokenBucketMeter::refreshDisplay() const
@@ -75,7 +62,7 @@ void TokenBucketMeter::refreshDisplay() const
     getDisplayString().setTagArg("t", 0, buf);
 }
 
-int TokenBucketMeter::meterPacket(cPacket *packet)
+int TokenBucketMeter::meterPacket(Packet *packet)
 {
     // update token buckets
     simtime_t currentTime = simTime();

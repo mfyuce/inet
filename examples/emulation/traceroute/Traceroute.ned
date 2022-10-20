@@ -1,34 +1,19 @@
 //
 // Copyright (C) 2008 Irene Ruengeler
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 //
 
 package inet.examples.emulation.traceroute;
 
-import inet.node.ethernet.EtherSwitch;
+import inet.node.ethernet.EthernetSwitch;
 import inet.node.inet.Router;
 import inet.node.inet.StandardHost;
 import ned.DatarateChannel;
 
-
 network Traceroute
 {
-    parameters:
-        double testTimeout @unit(s) = default(0s);
-        bool testing = default(false);
     types:
         channel pppline extends DatarateChannel
         {
@@ -44,87 +29,79 @@ network Traceroute
     submodules:
         cli1: StandardHost {
             parameters:
-                forwarding = false;
-                routingTable.routingFile = "cli1.mrt";
+                ipv4.routingTable.routingFile = "cli1.mrt";
                 @display("p=37,62;i=old/laptop3");
             gates:
                 ethg[1];
         }
         cli2: StandardHost {
             parameters:
-                forwarding = false;
-                routingTable.routingFile = "cli2.mrt";
+                ipv4.routingTable.routingFile = "cli2.mrt";
                 @display("p=35,131;i=old/laptop3");
             gates:
                 ethg[1];
         }
         cli3: StandardHost {
             parameters:
-                forwarding = false;
-                routingTable.routingFile = "cli3.mrt";
+                ipv4.routingTable.routingFile = "cli3.mrt";
                 @display("p=40,223;i=old/laptop3");
             gates:
                 ethg[1];
         }
         cli4: StandardHost {
             parameters:
-                forwarding = false;
-                routingTable.routingFile = "cli4.mrt";
+                ipv4.routingTable.routingFile = "cli4.mrt";
                 @display("p=40,295;i=old/laptop3");
             gates:
                 ethg[1];
         }
         cli5: StandardHost {
             parameters:
-                forwarding = false;
-                routingTable.routingFile = "cli5.mrt";
+                ipv4.routingTable.routingFile = "cli5.mrt";
                 @display("p=40,383;i=old/laptop3");
             gates:
                 ethg[1];
         }
         cli6: StandardHost {
             parameters:
-                forwarding = false;
-                routingTable.routingFile = "cli6.mrt";
+                ipv4.routingTable.routingFile = "cli6.mrt";
                 @display("p=40,439;i=old/laptop3");
             gates:
                 ethg[1];
         }
         cli7: StandardHost {
             parameters:
-                forwarding = false;
-                routingTable.routingFile = "cli7.mrt";
+                ipv4.routingTable.routingFile = "cli7.mrt";
                 @display("p=40,511;i=old/laptop3");
             gates:
                 ethg[1];
         }
         cli8: StandardHost {
             parameters:
-                forwarding = false;
-                routingTable.routingFile = "cli8.mrt";
+                ipv4.routingTable.routingFile = "cli8.mrt";
                 @display("p=40,575;i=old/laptop3");
             gates:
                 ethg[1];
         }
-        switch1: EtherSwitch {
+        switch1: EthernetSwitch {
             parameters:
                 @display("p=127,102;i=device/switch");
             gates:
                 ethg[3];
         }
-        switch2: EtherSwitch {
+        switch2: EthernetSwitch {
             parameters:
                 @display("p=129,254;i=device/switch");
             gates:
                 ethg[3];
         }
-        switch3: EtherSwitch {
+        switch3: EthernetSwitch {
             parameters:
                 @display("p=137,398;i=device/switch");
             gates:
                 ethg[3];
         }
-        switch4: EtherSwitch {
+        switch4: EthernetSwitch {
             parameters:
                 @display("p=138,534;i=device/switch");
             gates:
@@ -132,7 +109,7 @@ network Traceroute
         }
         router1: Router {
             parameters:
-                routingTable.routingFile = "router1.mrt";
+                ipv4.routingTable.routingFile = "router1.mrt";
                 @display("p=220,101;i=device/router_s");
             gates:
                 pppg[1];
@@ -140,7 +117,7 @@ network Traceroute
         }
         router2: Router {
             parameters:
-                routingTable.routingFile = "router2.mrt";
+                ipv4.routingTable.routingFile = "router2.mrt";
                 @display("p=236,253;i=device/router_s");
             gates:
                 pppg[1];
@@ -148,7 +125,7 @@ network Traceroute
         }
         router3: Router {
             parameters:
-                routingTable.routingFile = "router3.mrt";
+                ipv4.routingTable.routingFile = "router3.mrt";
                 @display("p=252,397;i=device/router_s");
             gates:
                 pppg[1];
@@ -156,7 +133,7 @@ network Traceroute
         }
         router4: Router {
             parameters:
-                routingTable.routingFile = "router4.mrt";
+                ipv4.routingTable.routingFile = "router4.mrt";
                 @display("p=268,533;i=device/router_s");
             gates:
                 pppg[1];
@@ -164,22 +141,21 @@ network Traceroute
         }
         Router5: Router {
             parameters:
-                routingTable.routingFile = "Router5.mrt";
+                ipv4.routingTable.routingFile = "Router5.mrt";
                 @display("p=372,165;i=device/router");
             gates:
                 pppg[3];
         }
         Router6: Router {
             parameters:
-                routingTable.routingFile = "Router6.mrt";
+                ipv4.routingTable.routingFile = "Router6.mrt";
                 @display("p=396,445;i=device/router");
             gates:
                 pppg[3];
         }
         extRouter: Router {
             parameters:
-                routingTable.routingFile = "extRouter.mrt";
-                numExtInterfaces = 1;
+                ipv4.routingTable.routingFile = "extRouter.mrt";
                 @display("p=500,293;i=device/router_l");
             gates:
                 pppg[2];

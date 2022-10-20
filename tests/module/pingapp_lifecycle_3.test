@@ -2,11 +2,11 @@
 
 Test ping stop followed by node startup.
 
+%#--------------------------------------------------------------------------------------------------------------
 %inifile: omnetpp.ini
 
 [General]
 network = Test
-tkenv-plugin-path = ../../../etc/plugins
 ned-path = .;../../../../src;../../lib
 cmdenv-express-mode = false
 
@@ -16,39 +16,40 @@ output-scalar-file = "${resultdir}/${configname}-${runnumber}.sca"
 output-vector-file = "${resultdir}/${configname}-${runnumber}.vec"
 snapshot-file = "${resultdir}/${configname}-${runnumber}.sna"
 
-*.host.numPingApps = 1
-*.host.pingApp[0].destAddr = "192.168.0.42"
-*.host.pingApp[0].startTime = 0s
-*.host.pingApp[0].stopTime = 3.1s
+*.host.numApps = 1
+*.host.app[0].typename = "PingApp"
+*.host.app[0].destAddr = "192.168.0.42"
+*.host.app[0].startTime = 0s
+*.host.app[0].stopTime = 3.1s
 
-*.host.networkLayer.configurator.networkConfiguratorModule = ""
+*.host.ipv4.configurator.networkConfiguratorModule = ""
 
 **.hasStatus = true
 **.initialStatus = "down"
 **.scenarioManager.script = xmldoc("scenario.xml")
 
+%#--------------------------------------------------------------------------------------------------------------
 %file: test.ned
 
+import inet.test.moduletest.lib.*;
 import inet.node.inet.StandardHost;
-import inet.common.lifecycle.LifecycleController;
 import inet.common.scenario.ScenarioManager;
 
 network Test
 {
     submodules:
         scenarioManager: ScenarioManager;
-        lifecycleController: LifecycleController;
         host: StandardHost;
 }
 
 %file: scenario.xml
- 
+
 <scenario>
     <at t="6.0">
-        <tell module="lifecycleController" target="host" operation="NodeStartOperation"/>
+        <startup module="host"/>
     </at>
 </scenario>
-
+%#--------------------------------------------------------------------------------------------------------------
 %contains-regex: stdout
 
 .*Event #\d+  t=6 .*
@@ -58,13 +59,11 @@ Test.host starting up
 Test.host started
 
 <!> No more events
-
-%not-contains: stdout
-Sending ping #
-
 %#--------------------------------------------------------------------------------------------------------------
 %not-contains: stdout
-undisposed object:
-%not-contains: stdout
--- check module destructor
+Sending ping #
+%#--------------------------------------------------------------------------------------------------------------
+%postrun-command: grep "undisposed object:" test.out > test_undisposed.out || true
+%not-contains: test_undisposed.out
+undisposed object: (
 %#--------------------------------------------------------------------------------------------------------------

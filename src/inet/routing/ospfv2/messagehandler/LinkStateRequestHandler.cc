@@ -1,37 +1,26 @@
 //
 // Copyright (C) 2006 Andras Babos and Andras Varga
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
-
-#include <vector>
 
 #include "inet/routing/ospfv2/messagehandler/LinkStateRequestHandler.h"
 
-#include "inet/routing/ospfv2/neighbor/OSPFNeighbor.h"
-#include "inet/routing/ospfv2/router/OSPFRouter.h"
+#include <vector>
+
+#include "inet/routing/ospfv2/neighbor/Ospfv2Neighbor.h"
+#include "inet/routing/ospfv2/router/Ospfv2Router.h"
 
 namespace inet {
 
-namespace ospf {
+namespace ospfv2 {
 
 LinkStateRequestHandler::LinkStateRequestHandler(Router *containingRouter) :
     IMessageHandler(containingRouter)
 {
 }
 
-void LinkStateRequestHandler::processPacket(OSPFPacket *packet, Interface *intf, Neighbor *neighbor)
+void LinkStateRequestHandler::processPacket(Packet *packet, Ospfv2Interface *intf, Neighbor *neighbor)
 {
     router->getMessageHandler()->printEvent("Link State Request packet received", intf, neighbor);
 
@@ -41,19 +30,19 @@ void LinkStateRequestHandler::processPacket(OSPFPacket *packet, Interface *intf,
         (neighborState == Neighbor::LOADING_STATE) ||
         (neighborState == Neighbor::FULL_STATE))
     {
-        OSPFLinkStateRequestPacket *lsRequestPacket = check_and_cast<OSPFLinkStateRequestPacket *>(packet);
+        const auto& lsRequestPacket = packet->peekAtFront<Ospfv2LinkStateRequestPacket>();
 
         unsigned long requestCount = lsRequestPacket->getRequestsArraySize();
         bool error = false;
-        std::vector<OSPFLSA *> lsas;
+        std::vector<Ospfv2Lsa *> lsas;
 
         EV_INFO << "  Processing packet contents:\n";
 
         for (unsigned long i = 0; i < requestCount; i++) {
-            LSARequest& request = lsRequestPacket->getRequests(i);
-            LSAKeyType lsaKey;
+            const auto& request = lsRequestPacket->getRequests(i);
+            LsaKeyType lsaKey;
 
-            EV_INFO << "    LSARequest: type=" << request.lsType
+            EV_INFO << "    LsaRequest: type=" << request.lsType
                     << ", LSID=" << request.linkStateID
                     << ", advertisingRouter=" << request.advertisingRouter
                     << "\n";
@@ -61,7 +50,7 @@ void LinkStateRequestHandler::processPacket(OSPFPacket *packet, Interface *intf,
             lsaKey.linkStateID = request.linkStateID;
             lsaKey.advertisingRouter = request.advertisingRouter;
 
-            OSPFLSA *lsaInDatabase = router->findLSA(static_cast<LSAType>(request.lsType), lsaKey, intf->getArea()->getAreaID());
+            Ospfv2Lsa *lsaInDatabase = router->findLSA(static_cast<Ospfv2LsaType>(request.lsType), lsaKey, intf->getArea()->getAreaID());
 
             if (lsaInDatabase != nullptr) {
                 lsas.push_back(lsaInDatabase);
@@ -75,29 +64,29 @@ void LinkStateRequestHandler::processPacket(OSPFPacket *packet, Interface *intf,
 
         if (!error) {
             int updatesCount = lsas.size();
-            int ttl = (intf->getType() == Interface::VIRTUAL) ? VIRTUAL_LINK_TTL : 1;
+            int ttl = (intf->getType() == Ospfv2Interface::VIRTUAL) ? VIRTUAL_LINK_TTL : 1;
             MessageHandler *messageHandler = router->getMessageHandler();
 
             for (int j = 0; j < updatesCount; j++) {
-                OSPFLinkStateUpdatePacket *updatePacket = intf->createUpdatePacket(lsas[j]);
+                Packet *updatePacket = intf->createUpdatePacket(lsas[j]);
                 if (updatePacket != nullptr) {
-                    if (intf->getType() == Interface::BROADCAST) {
-                        if ((intf->getState() == Interface::DESIGNATED_ROUTER_STATE) ||
-                            (intf->getState() == Interface::BACKUP_STATE) ||
+                    if (intf->getType() == Ospfv2Interface::BROADCAST) {
+                        if ((intf->getState() == Ospfv2Interface::DESIGNATED_ROUTER_STATE) ||
+                            (intf->getState() == Ospfv2Interface::BACKUP_STATE) ||
                             (intf->getDesignatedRouter() == NULL_DESIGNATEDROUTERID))
                         {
-                            messageHandler->sendPacket(updatePacket, IPv4Address::ALL_OSPF_ROUTERS_MCAST, intf->getIfIndex(), ttl);
+                            messageHandler->sendPacket(updatePacket, Ipv4Address::ALL_OSPF_ROUTERS_MCAST, intf, ttl);
                         }
                         else {
-                            messageHandler->sendPacket(updatePacket, IPv4Address::ALL_OSPF_DESIGNATED_ROUTERS_MCAST, intf->getIfIndex(), ttl);
+                            messageHandler->sendPacket(updatePacket, Ipv4Address::ALL_OSPF_DESIGNATED_ROUTERS_MCAST, intf, ttl);
                         }
                     }
                     else {
-                        if (intf->getType() == Interface::POINTTOPOINT) {
-                            messageHandler->sendPacket(updatePacket, IPv4Address::ALL_OSPF_ROUTERS_MCAST, intf->getIfIndex(), ttl);
+                        if (intf->getType() == Ospfv2Interface::POINTTOPOINT) {
+                            messageHandler->sendPacket(updatePacket, Ipv4Address::ALL_OSPF_ROUTERS_MCAST, intf, ttl);
                         }
                         else {
-                            messageHandler->sendPacket(updatePacket, neighbor->getAddress(), intf->getIfIndex(), ttl);
+                            messageHandler->sendPacket(updatePacket, neighbor->getAddress(), intf, ttl);
                         }
                     }
                 }
@@ -107,7 +96,7 @@ void LinkStateRequestHandler::processPacket(OSPFPacket *packet, Interface *intf,
     }
 }
 
-} // namespace ospf
+} // namespace ospfv2
 
 } // namespace inet
 

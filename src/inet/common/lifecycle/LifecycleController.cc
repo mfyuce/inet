@@ -1,30 +1,22 @@
 //
-// (C) 2013 Opensim Ltd.
+// Copyright (C) 2013 OpenSim Ltd.
 //
-// This library is free software, you can redistribute it
-// and/or modify
-// it under  the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation;
-// either version 2 of the License, or any later version.
-// The library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-// See the GNU Lesser General Public License for more details.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// Author: Andras Varga (andras@omnetpp.org)
-//
+
+
+#include "inet/common/lifecycle/LifecycleController.h"
 
 #include <algorithm>
-#include "inet/common/lifecycle/LifecycleController.h"
-#include "inet/networklayer/contract/IInterfaceTable.h"
-#include "inet/networklayer/common/InterfaceEntry.h"
-#include "inet/networklayer/common/L3AddressResolver.h"
-#include "inet/common/lifecycle/LifecycleOperation.h"
+
 #include "inet/common/INETUtils.h"
+#include "inet/common/lifecycle/LifecycleOperation.h"
+#include "inet/common/stlutils.h"
+#include "inet/networklayer/common/L3AddressResolver.h"
+#include "inet/networklayer/common/NetworkInterface.h"
+#include "inet/networklayer/contract/IInterfaceTable.h"
 
 namespace inet {
-
-Define_Module(LifecycleController);
 
 void LifecycleController::Callback::init(LifecycleController *controller, LifecycleOperation *operation, cModule *module)
 {
@@ -40,53 +32,20 @@ void LifecycleController::Callback::invoke()
     controller->moduleOperationStageCompleted(this);
 }
 
-//----
+// ----
 
 template<typename T>
 void vector_delete_element(std::vector<T *>& v, T *p)
 {
-    auto it = std::find(v.begin(), v.end(), p);
+    auto it = find(v, p);
     ASSERT(it != v.end());
     v.erase(it);
     delete p;
 }
 
-void LifecycleController::initialize()
-{
-}
-
-void LifecycleController::handleMessage(cMessage *msg)
-{
-    throw cRuntimeError("This module does not process messages");
-}
-
-void LifecycleController::processCommand(const cXMLElement& node)
-{
-    // resolve target module
-    const char *target = node.getAttribute("target");
-    cModule *module = getModuleByPath(target);
-    if (!module)
-        throw cRuntimeError("Module '%s' not found", target);
-
-    // resolve operation
-    const char *operationName = node.getAttribute("operation");
-    LifecycleOperation *operation = check_and_cast<LifecycleOperation *>(inet::utils::createOne(operationName));
-    std::map<std::string, std::string> params = node.getAttributes();
-    params.erase("module");
-    params.erase("t");
-    params.erase("target");
-    params.erase("operation");
-    operation->initialize(module, params);
-    if (!params.empty())
-        throw cRuntimeError("Unknown parameter '%s' for operation %s at %s", params.begin()->first.c_str(), operationName, node.getSourceLocation());
-
-    // do the operation
-    initiateOperation(operation);
-}
-
 bool LifecycleController::initiateOperation(LifecycleOperation *operation, IDoneCallback *completionCallback)
 {
-    Enter_Method_Silent();
+    ASSERT(getSimulation()->getContextModule() == check_and_cast<cComponent *>(this));
     operation->currentStage = 0;
     operation->operationCompletionCallback = completionCallback;
     operation->insideInitiateOperation = true;
@@ -110,7 +69,7 @@ bool LifecycleController::resumeOperation(LifecycleOperation *operation)
     if (operation->operationCompletionCallback && !operation->insideInitiateOperation)
         operation->operationCompletionCallback->invoke();
     delete operation;
-    return true;    // done
+    return true; // done
 }
 
 void LifecycleController::doOneStage(LifecycleOperation *operation, cModule *submodule)
@@ -118,7 +77,7 @@ void LifecycleController::doOneStage(LifecycleOperation *operation, cModule *sub
     ILifecycle *subject = dynamic_cast<ILifecycle *>(submodule);
     if (subject) {
         Callback *callback = spareCallback ? spareCallback : new Callback();
-        bool done = subject->handleOperationStage(operation, operation->currentStage, callback);
+        bool done = subject->handleOperationStage(operation, callback);
         if (!done) {
             callback->init(this, operation, submodule);
             operation->pendingList.push_back(callback);
@@ -136,7 +95,10 @@ void LifecycleController::doOneStage(LifecycleOperation *operation, cModule *sub
 
 void LifecycleController::moduleOperationStageCompleted(Callback *callback)
 {
-    Enter_Method_Silent();
+    omnetpp::cMethodCallContextSwitcher __ctx(check_and_cast<cComponent *>(this)); __ctx.methodCall(__FUNCTION__);
+#ifdef INET_WITH_SELFDOC
+    __Enter_Method_SelfDoc(__FUNCTION__);
+#endif
 
     LifecycleOperation *operation = callback->operation;
     std::string moduleFullPath = callback->module->getFullPath();

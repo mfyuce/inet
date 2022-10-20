@@ -1,26 +1,15 @@
 //
-// Copyright (C) 2016 OpenSim Ltd
+// Copyright (C) 2016 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
 
-#include "ThermometerFigure.h"
+
+#include "inet/common/figures/ThermometerFigure.h"
+
 #include "inet/common/INETUtils.h"
 
-//TODO namespace inet { -- for the moment commented out, as OMNeT++ 5.0 cannot instantiate a figure from a namespace
-using namespace inet;
+namespace inet {
 
 Register_Figure("thermometer", ThermometerFigure);
 
@@ -45,6 +34,7 @@ static const char *PKEY_POS = "pos";
 static const char *PKEY_SIZE = "size";
 static const char *PKEY_ANCHOR = "anchor";
 static const char *PKEY_BOUNDS = "bounds";
+static const char *PKEY_LABEL_OFFSET = "labelOffset";
 
 ThermometerFigure::ThermometerFigure(const char *name) : cGroupFigure(name)
 {
@@ -54,9 +44,9 @@ ThermometerFigure::ThermometerFigure(const char *name) : cGroupFigure(name)
 ThermometerFigure::~ThermometerFigure()
 {
     // delete figures which is not in canvas
-    for (int i = numTicks; i < tickFigures.size(); ++i) {
-        delete tickFigures[i];
-        delete numberFigures[i];
+    for (size_t i = numTicks; i < tickFigures.size(); ++i) {
+        dropAndDelete(tickFigures[i]);
+        dropAndDelete(numberFigures[i]);
     }
 }
 
@@ -89,6 +79,19 @@ const char *ThermometerFigure::getLabel() const
 void ThermometerFigure::setLabel(const char *text)
 {
     labelFigure->setText(text);
+}
+
+int ThermometerFigure::getLabelOffset() const
+{
+    return labelOffset;
+}
+
+void ThermometerFigure::setLabelOffset(int offset)
+{
+    if (labelOffset != offset) {
+        labelOffset = offset;
+        labelFigure->setPosition(Point(getBounds().getCenter().x, getBounds().y + getBounds().height + labelOffset));
+    }
 }
 
 const cFigure::Font& ThermometerFigure::getLabelFont() const
@@ -159,7 +162,6 @@ void ThermometerFigure::parse(cProperty *property)
 
     setBounds(parseBounds(property, getBounds()));
 
-
     // Set default
     redrawTicks();
 
@@ -168,6 +170,8 @@ void ThermometerFigure::parse(cProperty *property)
         setMercuryColor(parseColor(s));
     if ((s = property->getValue(PKEY_LABEL)) != nullptr)
         setLabel(s);
+    if ((s = property->getValue(PKEY_LABEL_OFFSET)) != nullptr)
+        setLabelOffset(atoi(s));
     if ((s = property->getValue(PKEY_LABEL_FONT)) != nullptr)
         setLabelFont(parseFont(s));
     if ((s = property->getValue(PKEY_LABEL_COLOR)) != nullptr)
@@ -190,7 +194,7 @@ const char **ThermometerFigure::getAllowedPropertyKeys() const
         const char *localKeys[] = {
             PKEY_MERCURY_COLOR, PKEY_LABEL, PKEY_LABEL_FONT,
             PKEY_LABEL_COLOR, PKEY_MIN_VALUE, PKEY_MAX_VALUE, PKEY_TICK_SIZE,
-            PKEY_INITIAL_VALUE, PKEY_POS, PKEY_SIZE, PKEY_ANCHOR, PKEY_BOUNDS, nullptr
+            PKEY_INITIAL_VALUE, PKEY_POS, PKEY_SIZE, PKEY_ANCHOR, PKEY_BOUNDS, PKEY_LABEL_OFFSET, nullptr
         };
         concatArrays(keys, cGroupFigure::getAllowedPropertyKeys(), localKeys);
     }
@@ -279,8 +283,8 @@ void ThermometerFigure::setMercuryAndContainerGeometry()
 
     containerFigure->addMoveTo(x, y);
     containerFigure->addLineRel(0, height + 2 * offset);
-    //TODO this does not work with Qtenv:
-    //containerFigure->addCubicBezierCurveRel(0, width, width, width, width, 0);
+    // TODO this does not work with Qtenv:
+//    containerFigure->addCubicBezierCurveRel(0, width, width, width, width, 0);
     containerFigure->addArcRel(width / 2, width / 2, 0, true, false, width, 0);
     containerFigure->addLineRel(0, -height - 2 * offset);
     containerFigure->addArcRel(width / 2, width / 2, 0, true, false, -width, 0);
@@ -306,8 +310,8 @@ void ThermometerFigure::setMercuryAndContainerGeometry()
 
     mercuryFigure->addMoveTo(x, y + offset + height * (1 - mercuryLevel));
     mercuryFigure->addLineRel(0, height * mercuryLevel + overflow + offset);
-    //TODO this does not work with Qtenv:
-    //mercuryFigure->addCubicBezierCurveRel(0, width, width, width, width, 0);
+    // TODO this does not work with Qtenv:
+//    mercuryFigure->addCubicBezierCurveRel(0, width, width, width, width, 0);
     mercuryFigure->addArcRel(width / 2, width / 2, 0, true, false, width, 0);
     mercuryFigure->addLineRel(0, -height * mercuryLevel - overflow - offset);
     if (overflow > 0)
@@ -329,10 +333,12 @@ void ThermometerFigure::redrawTicks()
     numTicks = std::max(0.0, std::abs(max - min - shifting) / tickSize + 1);
 
     // Allocate ticks and numbers if needed
-    if (numTicks > tickFigures.size()) {
-        while (numTicks > tickFigures.size()) {
+    if ((size_t)numTicks > tickFigures.size()) {
+        while ((size_t)numTicks > tickFigures.size()) {
             cLineFigure *tick = new cLineFigure();
             cTextFigure *number = new cTextFigure();
+            take(tick);
+            take(number);
 
             number->setAnchor(cFigure::ANCHOR_W);
 
@@ -345,8 +351,12 @@ void ThermometerFigure::redrawTicks()
     for (int i = numTicks; i < prevNumTicks; ++i) {
         removeFigure(tickFigures[i]);
         removeFigure(numberFigures[i]);
+        take(tickFigures[i]);
+        take(numberFigures[i]);
     }
     for (int i = prevNumTicks; i < numTicks; ++i) {
+        drop(tickFigures[i]);
+        drop(numberFigures[i]);
         addFigure(tickFigures[i]);
         addFigure(numberFigures[i]);
     }
@@ -374,7 +384,7 @@ void ThermometerFigure::layout()
         setNumberGeometry(numberFigures[i], i);
     }
 
-    labelFigure->setPosition(Point(getBounds().getCenter().x, getBounds().y + getBounds().height));
+    labelFigure->setPosition(Point(getBounds().getCenter().x, getBounds().y + getBounds().height + labelOffset));
 }
 
 void ThermometerFigure::refresh()
@@ -382,5 +392,5 @@ void ThermometerFigure::refresh()
     setMercuryAndContainerGeometry();
 }
 
-// } // namespace inet
+} // namespace inet
 

@@ -1,26 +1,15 @@
 //
-// Copyright (C) 2016 OpenSim Ltd
+// Copyright (C) 2016 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
 
-#include "CounterFigure.h"
+
+#include "inet/common/figures/CounterFigure.h"
+
 #include "inet/common/INETUtils.h"
 
-//TODO namespace inet { -- for the moment commented out, as OMNeT++ 5.0 cannot instantiate a figure from a namespace
-using namespace inet;
+namespace inet {
 
 Register_Figure("counter", CounterFigure);
 
@@ -48,6 +37,7 @@ static const char *PKEY_LABEL_COLOR = "labelColor";
 static const char *PKEY_INITIAL_VALUE = "initialValue";
 static const char *PKEY_POS = "pos";
 static const char *PKEY_ANCHOR = "anchor";
+static const char *PKEY_LABEL_OFFSET = "labelOffset";
 
 CounterFigure::CounterFigure(const char *name) : cGroupFigure(name)
 {
@@ -72,8 +62,8 @@ int CounterFigure::getDecimalPlaces() const
 void CounterFigure::setDecimalPlaces(int number)
 {
     ASSERT(number > 0);
-    if (digits.size() != number) {
-        if (digits.size() > number)
+    if (digits.size() != (unsigned int)number) {
+        if (digits.size() > (unsigned int)number)
             // Remove unnecessary figures from canvas
             for (int i = digits.size() - 1; i > number - 1; --i) {
                 delete removeFigure(digits[i].bounds);
@@ -82,7 +72,7 @@ void CounterFigure::setDecimalPlaces(int number)
             }
         else
             // Add figure to canvas if it's necessary
-            while (digits.size() < number) {
+            while (digits.size() < (unsigned int)number) {
                 Digit digit(new cRectangleFigure(), new cTextFigure());
                 digit.bounds->setFilled(true);
                 digit.bounds->setFillColor(getDigitBackgroundColor());
@@ -156,6 +146,19 @@ const char *CounterFigure::getLabel() const
 void CounterFigure::setLabel(const char *text)
 {
     labelFigure->setText(text);
+}
+
+int CounterFigure::getLabelOffset() const
+{
+    return labelOffset;
+}
+
+void CounterFigure::setLabelOffset(int offset)
+{
+    if (labelOffset != offset) {
+        labelOffset = offset;
+        labelFigure->setPosition(Point(backgroundFigure->getBounds().x + backgroundFigure->getBounds().width / 2, backgroundFigure->getBounds().y + backgroundFigure->getBounds().height + labelOffset));
+    }
 }
 
 const cFigure::Font& CounterFigure::getLabelFont() const
@@ -310,8 +313,7 @@ void CounterFigure::calculateBounds()
     double rectHeight = getDigitFont().pointSize * DIGIT_HEIGHT_PERCENT;
 
     Rectangle bounds = backgroundFigure->getBounds();
-    backgroundFigure->setBounds(Rectangle(0, 0, 2 * PADDING + (rectWidth + DIGIT_PADDING) * digits.size(),
-                    rectHeight + 2 * PADDING));
+    backgroundFigure->setBounds(Rectangle(0, 0, 2 * PADDING + (rectWidth + DIGIT_PADDING) * digits.size(), rectHeight + 2 * PADDING));
     Point pos = calculateRealPos(Point(bounds.x, bounds.y));
     bounds = backgroundFigure->getBounds();
     bounds.x = pos.x;
@@ -323,9 +325,10 @@ void CounterFigure::parse(cProperty *property)
 {
     cGroupFigure::parse(property);
 
+    const char *s;
+
     setPos(parsePoint(property, PKEY_POS, 0));
 
-    const char *s;
     if ((s = property->getValue(PKEY_BACKGROUND_COLOR)) != nullptr)
         setBackgroundColor(parseColor(s));
     if ((s = property->getValue(PKEY_ANCHOR)) != nullptr)
@@ -344,6 +347,8 @@ void CounterFigure::parse(cProperty *property)
         setDigitColor(parseColor(s));
     if ((s = property->getValue(PKEY_LABEL)) != nullptr)
         setLabel(s);
+    if ((s = property->getValue(PKEY_LABEL_OFFSET)) != nullptr)
+        setLabelOffset(atoi(s));
     if ((s = property->getValue(PKEY_LABEL_FONT)) != nullptr)
         setLabelFont(parseFont(s));
     if ((s = property->getValue(PKEY_LABEL_COLOR)) != nullptr)
@@ -361,7 +366,7 @@ const char **CounterFigure::getAllowedPropertyKeys() const
         const char *localKeys[] = {
             PKEY_BACKGROUND_COLOR, PKEY_DECIMAL_PLACES, PKEY_DIGIT_BACKGROUND_COLOR,
             PKEY_DIGIT_BORDER_COLOR, PKEY_DIGIT_FONT, PKEY_DIGIT_COLOR, PKEY_LABEL, PKEY_LABEL_FONT,
-            PKEY_LABEL_COLOR, PKEY_INITIAL_VALUE, PKEY_POS, PKEY_ANCHOR, nullptr
+            PKEY_LABEL_COLOR, PKEY_INITIAL_VALUE, PKEY_POS, PKEY_ANCHOR, PKEY_LABEL_OFFSET, nullptr
         };
         concatArrays(keys, cGroupFigure::getAllowedPropertyKeys(), localKeys);
     }
@@ -375,7 +380,7 @@ void CounterFigure::layout()
     // Add frame
     bounds.x += PADDING + DIGIT_PADDING / 2;
 
-    for (int i = 0; i < digits.size(); ++i) {
+    for (uint32_t i = 0; i < digits.size(); ++i) {
         double rectWidth = getDigitFont().pointSize * DIGIT_WIDTH_PERCENT;
         double rectHeight = getDigitFont().pointSize * DIGIT_HEIGHT_PERCENT;
         double x = bounds.x + (rectWidth + DIGIT_PADDING) * i;
@@ -385,7 +390,7 @@ void CounterFigure::layout()
         digits[i].text->setPosition(digits[i].bounds->getBounds().getCenter());
     }
 
-    labelFigure->setPosition(Point(bounds.x + bounds.width / 2, bounds.y + bounds.height));
+    labelFigure->setPosition(Point(bounds.x + bounds.width / 2, bounds.y + bounds.height + labelOffset));
 }
 
 void CounterFigure::addChildren()
@@ -438,5 +443,5 @@ void CounterFigure::refresh()
     }
 }
 
-// } // namespace inet
+} // namespace inet
 

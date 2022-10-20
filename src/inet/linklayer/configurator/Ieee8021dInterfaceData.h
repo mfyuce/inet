@@ -1,32 +1,19 @@
 //
 // Copyright (C) 2013 OpenSim Ltd.
 //
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/.
-//
-// Author: Benjamin Martin Seregi
-//
+
 
 #ifndef __INET_IEEE8021DINTERFACEDATA_H
 #define __INET_IEEE8021DINTERFACEDATA_H
 
-#include "inet/common/INETDefs.h"
-#include "inet/networklayer/common/InterfaceEntry.h"
-#include "inet/linklayer/common/MACAddress.h"
+#include "inet/linklayer/common/MacAddress.h"
+#include "inet/networklayer/common/NetworkInterface.h"
 
 namespace inet {
 
-#undef ALTERNATE    // conflicts with <windows.h>
+#undef ALTERNATE // conflicts with <windows.h>
 
 /**
  * Per-interface data needed by the STP and RSTP protocols.
@@ -38,8 +25,7 @@ class INET_API Ieee8021dInterfaceData : public InterfaceProtocolData
 
     enum PortState { DISCARDING, LEARNING, FORWARDING };
 
-    class PortInfo
-    {
+    class INET_API PortInfo {
       public:
         /* The following values have same meaning in both STP and RSTP.
          * See Ieee8021dBDPU for more info.
@@ -52,24 +38,24 @@ class INET_API Ieee8021dInterfaceData : public InterfaceProtocolData
         PortRole role;
 
         unsigned int rootPriority;
-        MACAddress rootAddress;
+        MacAddress rootAddress;
         unsigned int rootPathCost;
         unsigned int bridgePriority;
-        MACAddress bridgeAddress;
+        MacAddress bridgeAddress;
         unsigned int portPriority;
-        unsigned int portNum;    // The number of the switch port (i.e. EtherSwitch ethg[] gate index).
+        unsigned int portNum; // The number of the switch port (i.e. EthernetSwitch ethg[] gate index).
 
-        simtime_t age;    // This parameter is conveyed to enable a switch to discard information whose age exceeds Max Age. (STP,RSTP)
+        simtime_t age; // This parameter is conveyed to enable a switch to discard information whose age exceeds Max Age. (STP,RSTP)
         simtime_t maxAge;
 
-        simtime_t fdWhile;    // Forward delay timer (see fwdDelay). (STP,RSTP)
-        simtime_t fwdDelay;    // The time spent by a Port in the Listening State and the Learning State before moving to the Learning or For-
-                               // warding State, respectively. (STP,RSTP)
+        simtime_t fdWhile; // Forward delay timer (see fwdDelay). (STP,RSTP)
+        simtime_t fwdDelay; // The time spent by a Port in the Listening State and the Learning State before moving to the Learning or For-
+                            // warding State, respectively. (STP,RSTP)
 
-        simtime_t helloTime;    // The time interval between the generation of Configuration BPDUs by the Root. (STP)
-                                // The interval between periodic transmissions of Configuration Messages by Designated Ports. (RSTP)
+        simtime_t helloTime; // The time interval between the generation of Configuration BPDUs by the Root. (STP)
+                             // The interval between periodic transmissions of Configuration Messages by Designated Ports. (RSTP)
 
-        simtime_t TCWhile;    // The Topology Change timer. TCN Messages are sent while this timer is running. (RSTP)
+        simtime_t TCWhile; // The Topology Change timer. TCN Messages are sent while this timer is running. (RSTP)
 
         unsigned int lostBPDU;
         simtime_t nextUpgrade;
@@ -84,8 +70,8 @@ class INET_API Ieee8021dInterfaceData : public InterfaceProtocolData
   public:
     Ieee8021dInterfaceData();
 
-    virtual std::string info() const override;
-    virtual std::string detailedInfo() const override;
+    virtual std::string str() const override;
+    virtual std::string detailedInfo() const;
 
     bool isLearning() const { return portData.state == LEARNING || portData.state == FORWARDING; }
 
@@ -95,9 +81,9 @@ class INET_API Ieee8021dInterfaceData : public InterfaceProtocolData
 
     void setAge(simtime_t age) { portData.age = age; }
 
-    const MACAddress& getBridgeAddress() const { return portData.bridgeAddress; }
+    const MacAddress& getBridgeAddress() const { return portData.bridgeAddress; }
 
-    void setBridgeAddress(const MACAddress& bridgeAddress) { portData.bridgeAddress = bridgeAddress; }
+    void setBridgeAddress(const MacAddress& bridgeAddress) { portData.bridgeAddress = bridgeAddress; }
 
     unsigned int getBridgePriority() const { return portData.bridgePriority; }
 
@@ -139,9 +125,9 @@ class INET_API Ieee8021dInterfaceData : public InterfaceProtocolData
 
     void setRole(PortRole role) { portData.role = role; }
 
-    const MACAddress& getRootAddress() const { return portData.rootAddress; }
+    const MacAddress& getRootAddress() const { return portData.rootAddress; }
 
-    void setRootAddress(const MACAddress& rootAddress) { portData.rootAddress = rootAddress; }
+    void setRootAddress(const MacAddress& rootAddress) { portData.rootAddress = rootAddress; }
 
     unsigned int getRootPathCost() const { return portData.rootPathCost; }
 
@@ -182,5 +168,5 @@ class INET_API Ieee8021dInterfaceData : public InterfaceProtocolData
 
 } // namespace inet
 
-#endif // ifndef __INET_IEEE8021DINTERFACEDATA_H
+#endif
 

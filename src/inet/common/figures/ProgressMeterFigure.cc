@@ -1,26 +1,15 @@
 //
-// Copyright (C) 2016 OpenSim Ltd
+// Copyright (C) 2016 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
 
-#include "ProgressMeterFigure.h"
+
+#include "inet/common/figures/ProgressMeterFigure.h"
+
 #include "inet/common/INETUtils.h"
 
-//TODO namespace inet { -- for the moment commented out, as OMNeT++ 5.0 cannot instantiate a figure from a namespace
-using namespace inet;
+namespace inet {
 
 Register_Figure("progressMeter", ProgressMeterFigure);
 
@@ -34,6 +23,7 @@ static const char *PKEY_TEXT = "text";
 static const char *PKEY_TEXT_FONT = "textFont";
 static const char *PKEY_TEXT_COLOR = "textColor";
 static const char *PKEY_LABEL = "label";
+static const char *PKEY_LABELOFFSET = "labelOffset";
 static const char *PKEY_LABEL_FONT = "labelFont";
 static const char *PKEY_LABEL_COLOR = "labelColor";
 static const char *PKEY_INITIAL_VALUE = "initialValue";
@@ -130,6 +120,19 @@ void ProgressMeterFigure::setLabel(const char *text)
     labelFigure->setText(text);
 }
 
+int ProgressMeterFigure::getLabelOffset() const
+{
+    return labelOffset;
+}
+
+void ProgressMeterFigure::setLabelOffset(int offset)
+{
+    if (labelOffset != offset) {
+        labelOffset = offset;
+        labelFigure->setPosition(Point(getBounds().x + getBounds().width / 2, getBounds().y + getBounds().height + labelOffset));
+    }
+}
+
 const cFigure::Font& ProgressMeterFigure::getLabelFont() const
 {
     return labelFigure->getFont();
@@ -211,6 +214,8 @@ void ProgressMeterFigure::parse(cProperty *property)
         setTextColor(parseColor(s));
     if ((s = property->getValue(PKEY_LABEL)) != nullptr)
         setLabel(s);
+    if ((s = property->getValue(PKEY_LABELOFFSET)) != nullptr)
+        setLabelOffset(atoi(s));
     if ((s = property->getValue(PKEY_LABEL_FONT)) != nullptr)
         setLabelFont(parseFont(s));
     if ((s = property->getValue(PKEY_LABEL_COLOR)) != nullptr)
@@ -226,7 +231,8 @@ const char **ProgressMeterFigure::getAllowedPropertyKeys() const
         const char *localKeys[] = {
             PKEY_BACKGROUND_COLOR, PKEY_STRIP_COLOR, PKEY_CORNER_RADIUS, PKEY_BORDER_WIDTH,
             PKEY_MIN_VALUE, PKEY_MAX_VALUE, PKEY_TEXT, PKEY_TEXT_FONT, PKEY_TEXT_COLOR, PKEY_LABEL,
-            PKEY_LABEL_FONT, PKEY_LABEL_COLOR, PKEY_INITIAL_VALUE, PKEY_POS, PKEY_SIZE, PKEY_ANCHOR,
+            PKEY_LABELOFFSET, PKEY_LABEL_FONT, PKEY_LABEL_COLOR, PKEY_INITIAL_VALUE, PKEY_POS,
+            PKEY_SIZE, PKEY_ANCHOR,
             PKEY_BOUNDS, nullptr
         };
         concatArrays(keys, cGroupFigure::getAllowedPropertyKeys(), localKeys);
@@ -241,7 +247,7 @@ void ProgressMeterFigure::layout()
     backgroundFigure->setBounds(bounds);
 
     valueFigure->setPosition(Point(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2));
-    labelFigure->setPosition(Point(bounds.x + bounds.width / 2, bounds.y + bounds.height));
+    labelFigure->setPosition(Point(bounds.x + bounds.width / 2, bounds.y + bounds.height + labelOffset));
 }
 
 void ProgressMeterFigure::addChildren()
@@ -305,5 +311,5 @@ void ProgressMeterFigure::refresh()
     }
 }
 
-// } // namespace inet
+} // namespace inet
 

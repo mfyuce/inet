@@ -1,36 +1,30 @@
-/*
- * Copyright (C) 2003 Andras Varga; CTIE, Monash University, Australia
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
- */
-
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
+//
+// Copyright (C) 2003 Andras Varga; CTIE, Monash University, Australia
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
 
 #include "inet/applications/ethernet/EtherTrafGen.h"
 
-#include "inet/linklayer/common/Ieee802Ctrl.h"
-#include "inet/common/lifecycle/NodeOperations.h"
+#include <math.h>
+#include <stdio.h>
+#include <string.h>
+
 #include "inet/common/ModuleAccess.h"
+#include "inet/common/ProtocolTag_m.h"
+#include "inet/common/TimeTag_m.h"
+#include "inet/common/lifecycle/ModuleOperations.h"
+#include "inet/common/packet/Packet.h"
+#include "inet/common/packet/chunk/ByteCountChunk.h"
+#include "inet/linklayer/common/Ieee802Ctrl.h"
+#include "inet/linklayer/common/Ieee802SapTag_m.h"
+#include "inet/linklayer/common/InterfaceTag_m.h"
+#include "inet/linklayer/common/MacAddressTag_m.h"
+#include "inet/networklayer/common/L3AddressResolver.h"
 
 namespace inet {
 
 Define_Module(EtherTrafGen);
-
-simsignal_t EtherTrafGen::sentPkSignal = registerSignal("sentPk");
-simsignal_t EtherTrafGen::rcvdPkSignal = registerSignal("rcvdPk");
 
 EtherTrafGen::EtherTrafGen()
 {
@@ -38,7 +32,6 @@ EtherTrafGen::EtherTrafGen()
     numPacketsPerBurst = nullptr;
     packetLength = nullptr;
     timerMsg = nullptr;
-    nodeStatus = nullptr;
 }
 
 EtherTrafGen::~EtherTrafGen()
@@ -48,13 +41,20 @@ EtherTrafGen::~EtherTrafGen()
 
 void EtherTrafGen::initialize(int stage)
 {
-    cSimpleModule::initialize(stage);
+    if (stage == INITSTAGE_APPLICATION_LAYER && isGenerator()) {
+        timerMsg = new cMessage("generateNextPacket");
+        outInterface = CHK(interfaceTable->findInterfaceByName(par("interface")))->getInterfaceId();
+    }
+
+    ApplicationBase::initialize(stage);
 
     if (stage == INITSTAGE_LOCAL) {
+        interfaceTable.reference(this, "interfaceTableModule", true);
         sendInterval = &par("sendInterval");
         numPacketsPerBurst = &par("numPacketsPerBurst");
         packetLength = &par("packetLength");
-        etherType = par("etherType");
+        ssap = par("ssap");
+        dsap = par("dsap");
 
         seqNum = 0;
         WATCH(seqNum);
@@ -68,58 +68,45 @@ void EtherTrafGen::initialize(int stage)
         stopTime = par("stopTime");
         if (stopTime >= SIMTIME_ZERO && stopTime < startTime)
             throw cRuntimeError("Invalid startTime/stopTime parameters");
-    }
-    else if (stage == INITSTAGE_APPLICATION_LAYER) {
-        if (isGenerator())
-            timerMsg = new cMessage("generateNextPacket");
-
-        nodeStatus = dynamic_cast<NodeStatus *>(findContainingNode(this)->getSubmodule("status"));
-        if (isNodeUp() && isGenerator())
-            scheduleNextPacket(-1);
+        llcSocket.setOutputGate(gate("out"));
     }
 }
 
-void EtherTrafGen::handleMessage(cMessage *msg)
+void EtherTrafGen::handleMessageWhenUp(cMessage *msg)
 {
-    if (!isNodeUp())
-        throw cRuntimeError("Application is not running");
     if (msg->isSelfMessage()) {
         if (msg->getKind() == START) {
-            destMACAddress = resolveDestMACAddress();
+            llcSocket.open(-1, ssap, -1);
+            destMacAddress = resolveDestMacAddress();
             // if no dest address given, nothing to do
-            if (destMACAddress.isUnspecified())
+            if (destMacAddress.isUnspecified())
                 return;
         }
         sendBurstPackets();
         scheduleNextPacket(simTime());
     }
     else
-        receivePacket(check_and_cast<cPacket *>(msg));
+        receivePacket(check_and_cast<Packet *>(msg));
 }
 
-bool EtherTrafGen::handleOperationStage(LifecycleOperation *operation, int stage, IDoneCallback *doneCallback)
+void EtherTrafGen::handleStartOperation(LifecycleOperation *operation)
 {
-    Enter_Method_Silent();
-    if (dynamic_cast<NodeStartOperation *>(operation)) {
-        if ((NodeStartOperation::Stage)stage == NodeStartOperation::STAGE_APPLICATION_LAYER && isGenerator())
-            scheduleNextPacket(-1);
+    if (isGenerator()) {
+        scheduleNextPacket(-1);
     }
-    else if (dynamic_cast<NodeShutdownOperation *>(operation)) {
-        if ((NodeShutdownOperation::Stage)stage == NodeShutdownOperation::STAGE_APPLICATION_LAYER)
-            cancelNextPacket();
-    }
-    else if (dynamic_cast<NodeCrashOperation *>(operation)) {
-        if ((NodeCrashOperation::Stage)stage == NodeCrashOperation::STAGE_CRASH)
-            cancelNextPacket();
-    }
-    else
-        throw cRuntimeError("Unsupported lifecycle operation '%s'", operation->getClassName());
-    return true;
 }
 
-bool EtherTrafGen::isNodeUp()
+void EtherTrafGen::handleStopOperation(LifecycleOperation *operation)
 {
-    return !nodeStatus || nodeStatus->getState() == NodeStatus::UP;
+    cancelNextPacket();
+    llcSocket.close(); // TODO return false and waiting socket close
+}
+
+void EtherTrafGen::handleCrashOperation(LifecycleOperation *operation)
+{
+    cancelNextPacket();
+    if (operation->getRootModule() != getContainingNode(this)) // closes socket when the application crashed only
+        llcSocket.destroy(); // TODO  in real operating systems, program crash detected by OS and OS closes sockets of crashed programs.
 }
 
 bool EtherTrafGen::isGenerator()
@@ -135,7 +122,7 @@ void EtherTrafGen::scheduleNextPacket(simtime_t previous)
         timerMsg->setKind(START);
     }
     else {
-        next = previous + sendInterval->doubleValue();
+        next = previous + *sendInterval;
         timerMsg->setKind(NEXT);
     }
     if (stopTime < SIMTIME_ZERO || next < stopTime)
@@ -147,59 +134,49 @@ void EtherTrafGen::cancelNextPacket()
     cancelEvent(timerMsg);
 }
 
-MACAddress EtherTrafGen::resolveDestMACAddress()
+MacAddress EtherTrafGen::resolveDestMacAddress()
 {
-    MACAddress destMACAddress;
+    MacAddress destMacAddress;
     const char *destAddress = par("destAddress");
-    if (destAddress[0]) {
-        // try as mac address first, then as a module
-        if (!destMACAddress.tryParse(destAddress)) {
-            cModule *destStation = getModuleByPath(destAddress);
-            if (!destStation)
-                throw cRuntimeError("cannot resolve MAC address '%s': not a 12-hex-digit MAC address or a valid module path name", destAddress);
-
-            cModule *destMAC = destStation->getSubmodule("mac");
-            if (!destMAC)
-                throw cRuntimeError("module '%s' has no 'mac' submodule", destAddress);
-
-            destMACAddress.setAddress(destMAC->par("address"));
-        }
-    }
-    return destMACAddress;
+    if (destAddress[0])
+        destMacAddress = L3AddressResolver().resolve(destAddress, L3AddressResolver::ADDR_MAC).toMac();
+    return destMacAddress;
 }
 
 void EtherTrafGen::sendBurstPackets()
 {
-    int n = numPacketsPerBurst->longValue();
+    int n = *numPacketsPerBurst;
     for (int i = 0; i < n; i++) {
         seqNum++;
 
         char msgname[40];
         sprintf(msgname, "pk-%d-%ld", getId(), seqNum);
 
-        cPacket *datapacket = new cPacket(msgname, IEEE802CTRL_DATA);
+        Packet *datapacket = new Packet(msgname, SOCKET_C_DATA);
+        long len = *packetLength;
+        const auto& payload = makeShared<ByteCountChunk>(B(len));
+        payload->addTag<CreationTimeTag>()->setCreationTime(simTime());
+        datapacket->insertAtBack(payload);
+        datapacket->addTag<DispatchProtocolReq>()->setProtocol(&Protocol::ieee8022llc);
+        datapacket->addTag<MacAddressReq>()->setDestAddress(destMacAddress);
+        datapacket->addTag<InterfaceReq>()->setInterfaceId(outInterface);
+        auto sapTag = datapacket->addTag<Ieee802SapReq>();
+        sapTag->setSsap(ssap);
+        sapTag->setDsap(dsap);
 
-        long len = packetLength->longValue();
-        datapacket->setByteLength(len);
-
-        Ieee802Ctrl *etherctrl = new Ieee802Ctrl();
-        etherctrl->setEtherType(etherType);
-        etherctrl->setDest(destMACAddress);
-        datapacket->setControlInfo(etherctrl);
-
-        EV_INFO << "Send packet `" << msgname << "' dest=" << destMACAddress << " length=" << len << "B type=" << etherType << "\n";
-        emit(sentPkSignal, datapacket);
+        EV_INFO << "Send packet `" << msgname << "' dest=" << destMacAddress << " length=" << len << "B ssap/dsap=" << ssap << "/" << dsap << "\n";
+        emit(packetSentSignal, datapacket);
         send(datapacket, "out");
         packetsSent++;
     }
 }
 
-void EtherTrafGen::receivePacket(cPacket *msg)
+void EtherTrafGen::receivePacket(Packet *msg)
 {
     EV_INFO << "Received packet `" << msg->getName() << "' length= " << msg->getByteLength() << "B\n";
 
     packetsReceived++;
-    emit(rcvdPkSignal, msg);
+    emit(packetReceivedSignal, msg);
     delete msg;
 }
 

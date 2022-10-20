@@ -10,51 +10,36 @@
 // *
 // *   Copyright (C) 2009-2015 by Thomas Dreibholz
 // *
-// *   This program is free software: you can redistribute it and/or modify
-// *   it under the terms of the GNU General Public License as published by
-// *   the Free Software Foundation, either version 3 of the License, or
-// *   (at your option) any later version.
-// *
-// *   This program is distributed in the hope that it will be useful,
-// *   but WITHOUT ANY WARRANTY; without even the implied warranty of
-// *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// *   GNU General Public License for more details.
-// *
-// *   You should have received a copy of the GNU General Public License
-// *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
 // *
 // *   Contact: dreibh@iem.uni-due.de
 
 package inet.examples.inet.netperfmeter;
 
-import inet.applications.netperfmeter.NetPerfMeterHost;
-import inet.common.queue.FIFOQueue;
-import inet.common.queue.IOutputQueue;
-import inet.common.queue.REDDropper;
-import inet.networklayer.configurator.ipv4.IPv4NetworkConfigurator;
+import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
 import inet.node.inet.Router;
+import inet.node.inet.StandardHost;
+import inet.queueing.filter.RedDropper;
+import inet.queueing.queue.CompoundPacketQueueBase;
+import inet.queueing.queue.PacketQueue;
 import ned.DatarateChannel;
 
-
-module REDQueue like IOutputQueue
+module REDQueue extends CompoundPacketQueueBase
 {
-    gates:
-        input in;
-        output out;
-
     submodules:
-        red: REDDropper {
-            numGates = 1;
+        red: RedDropper {
             wq = default(0.002);
-            minths = default("30");
-            maxths = default("90");
-            maxps = default("0.10");
-            pkrates = default("8333.333");
+            minth = default(30);
+            maxth = default(90);
+            maxp = default(0.10);
+            pkrate = default(8333.333);
         }
-        fifo: FIFOQueue;
+        fifo: PacketQueue;
     connections:
-        in --> red.in[0];
-        red.out[0] --> fifo.in++;
+        in --> red.in;
+        red.out --> fifo.in;
         fifo.out --> out;
 }
 
@@ -88,7 +73,7 @@ network testNetwork
     // ====== Network Components ============================================
     submodules:
         // ------ Routing Auto-Configuration --------------------------------
-        configurator: IPv4NetworkConfigurator {
+        configurator: Ipv4NetworkConfigurator {
             parameters:
                 @display("p=850,75;i=abstract/penguin_l,gold");
         }
@@ -98,7 +83,7 @@ network testNetwork
             parameters:
                 @display("p=500,150,c,150;i=abstract/router_l,gold");
             gates:
-                pppg[1 + systems];
+                pppg[1 + parent.systems];
         }
         westernCoreRouter: Router {
             parameters:
@@ -116,18 +101,18 @@ network testNetwork
             parameters:
                 @display("p=1200,150,c,150;i=abstract/router_l,gold");
             gates:
-                pppg[1 + systems];
+                pppg[1 + parent.systems];
         }
 
         // ------ Systems -----------------------------------------------------
-        clientMain[systems]: NetPerfMeterHost {
+        clientMain[systems]: StandardHost {
             parameters:
                 forwarding = false;
                 @display("p=50,50,c,200;i=device/laptop_l,green");
             gates:
                 pppg[1];
         }
-        serverMain[systems]: NetPerfMeterHost {
+        serverMain[systems]: StandardHost {
             parameters:
                 forwarding = false;
                 @display("p=1650,50,c,200;i=device/server_l,green");

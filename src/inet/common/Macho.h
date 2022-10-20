@@ -67,8 +67,8 @@
 //
 // Example:
 //
-// #include "Macho.hpp"
-// #include <iostream>
+//#include "Macho.hpp"
+//#include <iostream>
 // using namespace std;
 //
 
@@ -206,8 +206,10 @@
 //       - Initial release
 //
 
-#include <new>
 #include <cassert>
+#include <new>
+
+#include "inet/common/INETDefs.h"
 
 namespace inet {
 
@@ -218,26 +220,26 @@ class TestAccess;
 
 // Use this macro to define your top state class.
 #define TOPSTATE(TOP) \
-    struct TOP : public ::inet::Macho::MachoLink < TOP, ::inet::Macho::TopBase<TOP> >
+    struct TOP : public ::inet::Macho::MachoLink<TOP, ::inet::Macho::TopBase<TOP>>
 
 // Use this macro for all other state classes.
 #define SUBSTATE(STATE, SUPERSTATE) \
-    struct STATE : public ::inet::Macho::MachoLink < STATE, SUPERSTATE >
+    struct STATE : public ::inet::Macho::MachoLink<STATE, SUPERSTATE>
 
 // Use this macro for template states that receive an anchor as template
 // parameter.
 #define TSUBSTATE(STATE, SUPERSTATE) \
-    struct STATE : public ::inet::Macho::MAchoLink < STATE<typename SUPERSTATE::ANCHOR>, typename SUPERSTATE::SELF >
+    struct STATE : public ::inet::Macho::MachoLink<STATE<typename SUPERSTATE::ANCHOR>, typename SUPERSTATE::SELF>
 
 // Use this macro in your class definition to give it state functionality
 // (mandatory). If you have a state box declare it BEFORE macro invocation!
 #define STATE(S) \
   public: \
     typedef S SELF; \
-    typedef S ANCHOR;    /* Anchor is the first non-template state in the inheritance chain */ \
+    typedef S ANCHOR; /* Anchor is the first non-template state in the inheritance chain */ \
     /* Constructor and destructor already defined: you can't (and shouldn't) have your own! */ \
     /* For the user a state class "constructor" and "destructor" are its entry and exit method! */ \
-    S(::inet::Macho::_StateInstance & instance) : MLINK(instance) {} \
+    S(::inet::Macho::_StateInstance& instance) : MLINK(instance) {} \
     ~S() {} \
     static const char *_state_name() { return #S; } \
     /* Get to your Box with this method: */ \
@@ -250,23 +252,23 @@ class TestAccess;
     typedef S SELF; \
     typedef typename S::SUPER SUPER; \
     typedef typename S::TOP TOP; \
-    typedef typename S::ANCHOR ANCHOR;    /* Anchor is the first non-template state in the inheritance chain */ \
-    typedef::Macho::MachoLink<S, SUPER> MLINK; \
-    S(::Macho::_StateInstance & instance) : MLINK(instance) {} \
+    typedef typename S::ANCHOR ANCHOR; /* Anchor is the first non-template state in the inheritance chain */ \
+    typedef ::Macho::MachoLink<S, SUPER> MLINK; \
+    S(::Macho::_StateInstance& instance) : MLINK(instance) {} \
     ~S() {} \
     static const char *_state_name() { return #S; } \
-    typename S::Box & box() { return *static_cast<typename S::Box *>(this->_box()); } \
-    friend class::_VS8_Bug_101615; \
+    typename S::Box& box() { return *static_cast<typename S::Box *>(this->_box()); } \
+    friend class ::_VS8_Bug_101615; \
     using MLINK::dispatch; \
     using MLINK::machine; \
     /* must have these methods to quieten gcc */ \
     template<class U> void setState() { MLINK::template setState<U>(); } \
-    template<class U, class P1> void setState(const P1 &p1) { MLINK::template setState<U, P1>(p1); } \
-    template<class U, class P1, class P2> void setState(const P1 &p1, const P2 &p2) { MLINK::template setState<U, P1, P2>(p1, p2); } \
-    template<class U, class P1, class P2, class P3> void setState(const P1 &p1, const P2 &p2, const P3 &p3) { MLINK::template setState<U, P1, P2>(p1, p2, p3); } \
-    template<class U, class P1, class P2, class P3, class P4> void setState(const P1 &p1, const P2 &p2, const P3 &p3, const P4 &p4) { MLINK::template setState<U, P1, P2>(p1, p2, p3, p4); } \
-    template<class U, class P1, class P2, class P3, class P4, class P5> void setState(const P1 &p1, const P2 &p2, const P3 &p3, const P4 &p4, const P5 &p5) { MLINK::template setState<U, P1, P2>(p1, p2, p3, p4, p5); } \
-    template<class U, class P1, class P2, class P3, class P4, class P5, class P6> void setState(const P1 &p1, const P2 &p2, const P3 &p3, const P4 &p4, const P5 &p5, const P6 &p6) { MLINK::template setState<U, P1, P2>(p1, p2, p3, p4, p5, p6); } \
+    template<class U, class P1> void setState(const P1& p1) { MLINK::template setState<U, P1>(p1); } \
+    template<class U, class P1, class P2> void setState(const P1& p1, const P2& p2) { MLINK::template setState<U, P1, P2>(p1, p2); } \
+    template<class U, class P1, class P2, class P3> void setState(const P1& p1, const P2& p2, const P3& p3) { MLINK::template setState<U, P1, P2>(p1, p2, p3); } \
+    template<class U, class P1, class P2, class P3, class P4> void setState(const P1& p1, const P2& p2, const P3& p3, const P4& p4) { MLINK::template setState<U, P1, P2>(p1, p2, p3, p4); } \
+    template<class U, class P1, class P2, class P3, class P4, class P5> void setState(const P1& p1, const P2& p2, const P3& p3, const P4& p4, const P5& p5) { MLINK::template setState<U, P1, P2>(p1, p2, p3, p4, p5); } \
+    template<class U, class P1, class P2, class P3, class P4, class P5, class P6> void setState(const P1& p1, const P2& p2, const P3& p3, const P4& p4, const P5& p5, const P6& p6) { MLINK::template setState<U, P1, P2>(p1, p2, p3, p4, p5, p6); } \
     template<class U> void setStateHistory() { MLINK::template setStateHistory<U>(); } \
     void setState(const class Alias& state) { MLINK::setState(state); }
 
@@ -274,11 +276,11 @@ class TestAccess;
 #define DEEPHISTORY() \
   private: \
     /* If no superstate has history, SUPER::_setHistorySuper is a NOOP */ \
-    virtual void _saveHistory(::Macho::_StateInstance & self, ::Macho::_StateInstance & shallow, ::Macho::_StateInstance & deep) \
+    virtual void _saveHistory(::Macho::_StateInstance& self, ::Macho::_StateInstance& shallow, ::Macho::_StateInstance& deep) \
     { self.setHistory(&deep); SELF::SUPER::_setHistorySuper(self, deep); } \
   protected: \
     /* Substates may use _setHistorySuper to bubble up history */ \
-    virtual void _setHistorySuper(::Macho::_StateInstance & self, ::Macho::_StateInstance & deep) \
+    virtual void _setHistorySuper(::Macho::_StateInstance& self, ::Macho::_StateInstance& deep) \
     { self.setHistorySuper(deep); } \
   public:
 
@@ -286,18 +288,18 @@ class TestAccess;
 #define HISTORY() \
   private: \
     /* If no superstate has history, SUPER::_setHistorySuper is a NOOP */ \
-    virtual void _saveHistory(::Macho::_StateInstance & self, ::Macho::_StateInstance & shallow, ::Macho::_StateInstance & deep) \
+    virtual void _saveHistory(::Macho::_StateInstance& self, ::Macho::_StateInstance& shallow, ::Macho::_StateInstance& deep) \
     { self.setHistory(&shallow); SELF::SUPER::_setHistorySuper(self, deep); } \
   protected: \
     /* Substates may use _setHistorySuper to bubble up history */ \
-    virtual void _setHistorySuper(::Macho::_StateInstance & self, ::Macho::_StateInstance & deep) \
+    virtual void _setHistorySuper(::Macho::_StateInstance& self, ::Macho::_StateInstance& deep) \
     { self.setHistorySuper(deep); } \
   public:
 
 // Use this macro to have boxes survive state transitions
 #define PERSISTENT() \
   private: \
-    virtual void _deleteBox(::Macho::_StateInstance & instance) {} \
+    virtual void _deleteBox(::Macho::_StateInstance& instance) {} \
   public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -474,7 +476,7 @@ class _StateSpecification
     // Transition is performed AFTER control flow returns to the Machine object.
     // Initiating more than one transition is considered an error!
     // The new state may receive parameters for its 'init' methods:
-    // setState<StateA>("someData");
+//    setState<StateA>("someData");
     template<class S>
     void setState();
 
@@ -693,7 +695,7 @@ class MachoLink : public P
 ////////////////////////////////////////////////////////////////////////////////
 // Unique identifier for state S.
 template<class S>
-class StateID
+class StateId
 {
   public:
     static const ID value;
@@ -819,11 +821,11 @@ class _StateInstance
 
   protected:
     _MachineBase& myMachine;
-    _StateSpecification *mySpecification;    // Instance of state class
+    _StateSpecification *mySpecification; // Instance of state class
     mutable _StateInstance *myHistory;
     _StateInstance *myParent;
     void *myBox;
-    void *myBoxPlace;    // Reused box heap memory
+    void *myBoxPlace; // Reused box heap memory
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -894,7 +896,7 @@ class _SubstateInstance : public _StateInstance
 
     virtual ID id() override
     {
-        return StateID<S>::value;
+        return StateId<S>::value;
     }
 
     virtual Key key() override
@@ -1625,12 +1627,7 @@ class Alias
   public:
     explicit Alias(Key key, bool history = false)
         : myStateKey(key)
-        , myInitializer(
-                history ?
-                static_cast<_Initializer *>(&_theHistoryInitializer)
-                :
-                static_cast<_Initializer *>(&_theDefaultInitializer)
-                )
+        , myInitializer(history ? static_cast<_Initializer *>(&_theHistoryInitializer) : static_cast<_Initializer *>(&_theDefaultInitializer))
     {
         assert(key);
     }
@@ -1806,8 +1803,7 @@ class Machine : public _MachineBase
 
     // This class performs an action in its destructor after an event
     // handler has finished. Comparable to an After Advice in AOP.
-    struct AfterAdvice
-    {
+    struct AfterAdvice {
         AfterAdvice(Machine<TOP>& m) : myMachine(m) {}
 
         // Event handler has finished execution. Execute pending transitions now.
@@ -1828,7 +1824,8 @@ class Machine : public _MachineBase
     {
         // Compile time check: TOP must directly derive from TopBase<TOP>
         typedef typename _SameType<TopBase<TOP>, typename TOP::SUPER>::Check MustDeriveFromTopBase;
-        MustDeriveFromTopBase x; (void)x; // just to avoid local type not used warning
+        MustDeriveFromTopBase x;
+        (void)x; // just to avoid local type not used warning
 
         allocate(theStateCount);
 
@@ -1844,7 +1841,8 @@ class Machine : public _MachineBase
     {
         // Compile time check: TOP must directly derive from TopBase<TOP>
         typedef typename _SameType<TopBase<TOP>, typename TOP::SUPER>::Check MustDeriveFromTopBase;
-        MustDeriveFromTopBase x; (void)x; // to avoid local type not used warning
+        MustDeriveFromTopBase x;
+        (void)x; // to avoid local type not used warning
 
         allocate(theStateCount);
 
@@ -1935,7 +1933,7 @@ class Machine : public _MachineBase
     friend class Snapshot<TOP>;
 #endif // ifdef MACHO_SNAPSHOTS
 
-    template<class T> friend class StateID;
+    template<class T> friend class StateId;
 
     // Next free identifier for StateInstance objects.
     static ID theStateCount;
@@ -1950,7 +1948,7 @@ ID Machine<TOP>::theStateCount = 1;
 // which allows use as index into a vector for fast access.
 // 'Root' always has zero as id.
 template<class S>
-const ID StateID<S>::value = Machine<typename S::TOP>::theStateCount++;
+const ID StateId<S>::value = Machine<typename S::TOP>::theStateCount++;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Implementation for StateSpecification
@@ -2086,7 +2084,7 @@ template<class C, class P>
 /* static */ inline _StateInstance& MachoLink<C, P>::_getInstance(_MachineBase& machine)
 {
     // Look first in machine for existing StateInstance.
-    _StateInstance *& instance = machine.getInstance(StateID<C>::value);
+    _StateInstance *& instance = machine.getInstance(StateId<C>::value);
     if (!instance)
         // Will create parent StateInstance object if not already created.
         instance = new _SubstateInstance<C>(machine, &P::_getInstance(machine));
@@ -2110,7 +2108,7 @@ template<class C, class P>
 template<class C, class P>
 /* static */ void MachoLink<C, P>::clearHistory(_MachineBase& machine)
 {
-    const _StateInstance *instance = machine.getInstance(StateID<C>::value);
+    const _StateInstance *instance = machine.getInstance(StateId<C>::value);
     if (instance)
         instance->setHistory(0);
 }
@@ -2118,7 +2116,7 @@ template<class C, class P>
 template<class C, class P>
 /* static */ void MachoLink<C, P>::clearHistoryDeep(_MachineBase& machine)
 {
-    const _StateInstance *instance = machine.getInstance(StateID<C>::value);
+    const _StateInstance *instance = machine.getInstance(StateId<C>::value);
     if (instance)
         machine.clearHistoryDeep(Machine<TOP>::theStateCount, *instance);
 }
@@ -2126,7 +2124,7 @@ template<class C, class P>
 template<class C, class P>
 /* static */ Alias MachoLink<C, P>::history(const _MachineBase& machine)
 {
-    const _StateInstance *instance = machine.getInstance(StateID<C>::value);
+    const _StateInstance *instance = machine.getInstance(StateId<C>::value);
     _StateInstance *history = 0;
 
     if (instance)
@@ -2139,7 +2137,7 @@ template<class C, class P>
 /* static */ inline Key MachoLink<C, P>::key()
 {
     static _KeyData k = {
-        _getInstance, isChild, C::_state_name, StateID<C>::value
+        _getInstance, isChild, C::_state_name, StateId<C>::value
     };
     return &k;
 }
@@ -2172,5 +2170,5 @@ Snapshot<TOP>::Snapshot(Machine<TOP>& machine)
 
 } // namespace inet
 
-#endif    // __MACHO_HPP__
+#endif
 

@@ -1,20 +1,9 @@
 //
-// Copyright (C) 2012 Opensim Ltd.
-// Author: Tamas Borbely
+// Copyright (C) 2012 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
+
 
 package inet.networklayer.diffserv;
 
@@ -26,9 +15,13 @@ package inet.networklayer.diffserv;
 // and Excess Burst Size (ebs), to be either green, yellow or red.
 //
 // The green traffic is guaranteed to be under (in bits)
-//    cir * (t1 - t0) + 8 * cbs,
+// <pre>
+//    cir * (t1 - t0) + 8 * cbs
+// </pre>
 // and green+yellow traffic to be under
+// <pre>
 //    cir * (t1 - t0) + 8 * (cbs + ebs)
+// </pre>
 // in every [t0,t1] interval.
 //
 // When operating in color-aware mode, the meter does not recolor
@@ -45,8 +38,9 @@ simple SingleRateThreeColorMeter
         int ebs @unit(B); // excess burst size
         bool colorAwareMode = default(false); // enables color-aware mode
     gates:
-        input in[];
+        input in;
         output greenOut;
         output yellowOut;
         output redOut;
 }
+

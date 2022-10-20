@@ -1,26 +1,15 @@
 //
-// Copyright (C) 2012 Opensim Ltd.
-// Author: Tamas Borbely
+// Copyright (C) 2012 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
+
 
 package inet.networklayer.diffserv;
 
-import inet.common.queue.FIFOQueue;
-import inet.common.queue.REDDropper;
-
+import inet.queueing.common.PacketMultiplexer;
+import inet.queueing.filter.RedDropper;
+import inet.queueing.queue.PacketQueue;
 
 //
 // This is an example queue, that implements
@@ -64,23 +53,44 @@ module AFxyQueue
         input afx3In;
         output out;
     submodules:
-        fifoQueue: FIFOQueue {
-            @display("p=251,102");
+        red1: RedDropper {
+            collectionModule = "^.queue";
+            wq = parent.wq;
+            minth = parent.afx1Minth;
+            maxth = parent.afx1Maxth;
+            maxp = parent.afx1Maxp;
+            @display("p=100,100");
         }
-        redDropper: REDDropper {
-            numGates = 3;
-            wq = wq;
-            minths = string(afx1Minth) + " " + string(afx2Minth) + " " + string(afx3Minth);
-            maxths = string(afx1Maxth) + " " + string(afx2Maxth) + " " + string(afx3Maxth);
-            maxps = string(afx1Maxp) + " " + string(afx2Maxp) + " " + string(afx3Maxp);
-            @display("p=105,102");
+        red2: RedDropper {
+            collectionModule = "^.queue";
+            wq = parent.wq;
+            minth = parent.afx2Minth;
+            maxth = parent.afx2Maxth;
+            maxp = parent.afx2Maxp;
+            @display("p=100,200");
+        }
+        red3: RedDropper {
+            collectionModule = "^.queue";
+            wq = parent.wq;
+            minth = parent.afx3Minth;
+            maxth = parent.afx3Maxth;
+            maxp = parent.afx3Maxp;
+            @display("p=100,300");
+        }
+        mux: PacketMultiplexer {
+            @display("p=200,200");
+        }
+        queue: PacketQueue {
+            @display("p=300,200");
         }
     connections:
-        afx1In --> { @display("m=w"); } --> redDropper.in[0];
-        afx2In --> { @display("m=w"); } --> redDropper.in[1];
-        afx3In --> { @display("m=w"); } --> redDropper.in[2];
-        redDropper.out[0] --> { @display("m=m,100,20,0,50"); } --> fifoQueue.in++;
-        redDropper.out[1] --> { @display("m=m,100,50,0,50"); } --> fifoQueue.in++;
-        redDropper.out[2] --> { @display("m=m,100,80,0,50"); } --> fifoQueue.in++;
-        fifoQueue.out --> { @display("m=e"); } --> out;
+        afx1In --> { @display("m=w"); } --> red1.in;
+        afx2In --> { @display("m=w"); } --> red2.in;
+        afx3In --> { @display("m=w"); } --> red3.in;
+        red1.out --> { @display("m=m,100,20,0,50"); } --> mux.in++;
+        red2.out --> { @display("m=m,100,50,0,50"); } --> mux.in++;
+        red3.out --> { @display("m=m,100,80,0,50"); } --> mux.in++;
+        mux.out --> queue.in;
+        queue.out --> { @display("m=e"); } --> out;
 }
+

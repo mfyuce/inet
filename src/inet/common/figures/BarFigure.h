@@ -1,19 +1,9 @@
 //
 // Copyright (C) 2016 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
+
 
 #ifndef __INET_BARFIGURE_H
 #define __INET_BARFIGURE_H
@@ -22,30 +12,30 @@
 
 namespace inet {
 
-class INET_API BarFigure : public cGroupFigure
+class INET_API BarFigure : public cRectangleFigure
 {
   protected:
     double value = NaN;
     double minValue = NaN;
     double maxValue = NaN;
-    double width = 3;
-    double height = 16;
-    cFigure::Point position;
+    double spacing = 2;
+    cRectangleFigure *valueFigure = nullptr;
 
   protected:
     virtual void refreshDisplay();
 
   public:
-    BarFigure(double value, double minValue, double maxValue, const char *name = nullptr);
+    BarFigure(const char *name = nullptr);
 
-    virtual double getWidth() const { return width; }
-    virtual double getHeight() const { return height; }
+    void setColor(const cFigure::Color& color) { valueFigure->setFillColor(color); }
 
-    virtual void setPosition(const cFigure::Point& position);
-    virtual void setValue(double value);
+    void setSpacing(double spacing) { this->spacing = spacing; }
+    void setMinValue(double minValue) { this->minValue = minValue; }
+    void setMaxValue(double maxValue) { this->maxValue = maxValue; }
+    void setValue(double value);
 };
 
 } // namespace inet
 
-#endif // ifndef __INET_BARFIGURE_H
+#endif
 

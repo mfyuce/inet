@@ -1,28 +1,18 @@
-/**
- * Copyright (C) 2007
- * Faqir Zarrar Yousaf
- * Communication Networks Institute, Technical University Dortmund (TU Dortmund), Germany.
- * Christian Bauer
- * Institute of Communications and Navigation, German Aerospace Center (DLR)
-
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
+//
+// Copyright (C) 2007
+// Faqir Zarrar Yousaf
+// Communication Networks Institute, Technical University Dortmund (TU Dortmund), Germany.
+// Christian Bauer
+// Institute of Communications and Navigation, German Aerospace Center (DLR)
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+//
 
 #include "inet/networklayer/xmipv6/BindingUpdateList.h"
 
-#include "inet/networklayer/ipv6/IPv6InterfaceData.h"
+#include "inet/common/stlutils.h"
+#include "inet/networklayer/ipv6/Ipv6InterfaceData.h"
 
 namespace inet {
 
@@ -98,7 +88,7 @@ BindingUpdateList::~BindingUpdateList()
 
 void BindingUpdateList::initialize()
 {
-    WATCH_MAP(bindingUpdateList);    //added by Zarrar Yousaf
+    WATCH_MAP(bindingUpdateList); // added by Zarrar Yousaf
 }
 
 void BindingUpdateList::handleMessage(cMessage *msg)
@@ -106,7 +96,7 @@ void BindingUpdateList::handleMessage(cMessage *msg)
     throw cRuntimeError("This module doesn't process messages");
 }
 
-void BindingUpdateList::addOrUpdateBUL(const IPv6Address& dest, const IPv6Address& hoa, const IPv6Address& coa, const uint lifetime, const uint seq, const simtime_t buSentTime)    //,const simtime_t& nextBUSentTime)
+void BindingUpdateList::addOrUpdateBUL(const Ipv6Address& dest, const Ipv6Address& hoa, const Ipv6Address& coa, const uint lifetime, const uint seq, const simtime_t buSentTime) // ,const simtime_t& nextBUSentTime)
 {
     // modified structure - CB
 
@@ -126,21 +116,21 @@ void BindingUpdateList::addOrUpdateBUL(const IPv6Address& dest, const IPv6Addres
     entry->homeAddress = hoa;
     entry->careOfAddress = coa;
     // update lifetime 11.06.08 - CB
-    entry->bindingLifetime = lifetime;    // for the moment a constant but then it is supposed to decrement with time.
-    entry->bindingExpiry = simTime() + lifetime;    // binding expires at this point in time
-    //TODO bindingUpdateList[dest].remainingLifetime = ;
-    entry->sentTime = buSentTime;    //the time at which the BU, whose ack is awaited is sent
-    //entry->nextBUTx = nextBUSentTime; //the nextScgheduledTime at which the BU will be sent in case of timeout.
-    entry->sequenceNumber = seq;    //seq number of the last BU sent.
+    entry->bindingLifetime = lifetime; // for the moment a constant but then it is supposed to decrement with time.
+    entry->bindingExpiry = simTime() + lifetime; // binding expires at this point in time
+    // TODO bindingUpdateList[dest].remainingLifetime = ;
+    entry->sentTime = buSentTime; // the time at which the BU, whose ack is awaited is sent
+//    entry->nextBUTx = nextBUSentTime; //the nextScgheduledTime at which the BU will be sent in case of timeout.
+    entry->sequenceNumber = seq; // seq number of the last BU sent.
     entry->BAck = false;
 }
 
-BindingUpdateList::BindingUpdateListEntry *BindingUpdateList::createBULEntry(const IPv6Address& dest)
+BindingUpdateList::BindingUpdateListEntry *BindingUpdateList::createBULEntry(const Ipv6Address& dest)
 {
     bindingUpdateList[dest].destAddress = dest;
 
     BindingUpdateListEntry& entry = bindingUpdateList[dest];
-    //BindingUpdateList::BindingUpdateListEntry* entry = & bindingUpdateList[dest];
+//    BindingUpdateList::BindingUpdateListEntry* entry = & bindingUpdateList[dest];
     initializeBUValues(entry);
 
     return &entry;
@@ -151,9 +141,9 @@ void BindingUpdateList::initializeBUValues(BindingUpdateListEntry& entry)
     // normal BU values
     entry.bindingLifetime = 0;
     entry.bindingExpiry = 0;
-    //TODO bindingUpdateList[dest].remainingLifetime = ;
+    // TODO bindingUpdateList[dest].remainingLifetime = ;
     entry.sentTime = 0;
-    //entry.nextBUTx = 0;
+//    entry.nextBUTx = 0;
     entry.sequenceNumber = 0;
     entry.BAck = false;
 
@@ -162,14 +152,14 @@ void BindingUpdateList::initializeBUValues(BindingUpdateListEntry& entry)
     entry.sentCoTI = 0;
     entry.cookieHoTI = UNDEFINED_COOKIE;
     entry.cookieCoTI = UNDEFINED_COOKIE;
-    //entry.sendNext = 0;
+//    entry.sendNext = 0;
     entry.tokenH = UNDEFINED_TOKEN;
     entry.tokenC = UNDEFINED_TOKEN;
     // 21.07.08 - CB
     entry.state = NONE;
 }
 
-void BindingUpdateList::addOrUpdateBUL(const IPv6Address& dest, const IPv6Address& addr,
+void BindingUpdateList::addOrUpdateBUL(const Ipv6Address& dest, const Ipv6Address& addr,
         const simtime_t sentTime, const int cookie, bool HoTI = false)
 {
     EV_INFO << "\n++++++++++++++++++++Binding Update List for HoTI/CoTI Being Updated in Routing Table6 ++++++++++++++\n";
@@ -183,46 +173,37 @@ void BindingUpdateList::addOrUpdateBUL(const IPv6Address& dest, const IPv6Addres
         initializeBUValues(*entry);
     }
 
-    if (HoTI) {    // those values are from the HoTI message
+    if (HoTI) { // those values are from the HoTI message
         entry->homeAddress = addr;
         entry->sentHoTI = sentTime;
         entry->cookieHoTI = cookie;
     }
-    else {    // and those from the CoTI
+    else { // and those from the CoTI
         entry->careOfAddress = addr;
         entry->sentCoTI = sentTime;
         entry->cookieCoTI = cookie;
     }
 }
 
-BindingUpdateList::BindingUpdateListEntry *BindingUpdateList::lookup(const IPv6Address& dest)
+BindingUpdateList::BindingUpdateListEntry *BindingUpdateList::lookup(const Ipv6Address& dest)
 {
     auto i = bindingUpdateList.find(dest);
-
     return (i == bindingUpdateList.end()) ? nullptr : &(i->second);
 }
 
-BindingUpdateList::BindingUpdateListEntry *BindingUpdateList::fetch(const IPv6Address& dest)
+BindingUpdateList::BindingUpdateListEntry *BindingUpdateList::fetch(const Ipv6Address& dest)
 {
     BindingUpdateList::BindingUpdateListEntry *entry = lookup(dest);
-
-    if (entry == nullptr)
-        return createBULEntry(dest);
-    else
-        return entry;
+    return (entry == nullptr) ? createBULEntry(dest) : entry;
 }
 
-BindingUpdateList::MobilityState BindingUpdateList::getMobilityState(const IPv6Address& dest) const
+BindingUpdateList::MobilityState BindingUpdateList::getMobilityState(const Ipv6Address& dest) const
 {
     BindingUpdateList6::const_iterator i = bindingUpdateList.find(dest);
-
-    if (i == bindingUpdateList.end())
-        return NONE;
-    else
-        return i->second.state;
+    return (i == bindingUpdateList.end()) ? NONE : i->second.state;
 }
 
-void BindingUpdateList::setMobilityState(const IPv6Address& dest, BindingUpdateList::MobilityState state)
+void BindingUpdateList::setMobilityState(const Ipv6Address& dest, BindingUpdateList::MobilityState state)
 {
     auto i = bindingUpdateList.find(dest);
 
@@ -230,7 +211,7 @@ void BindingUpdateList::setMobilityState(const IPv6Address& dest, BindingUpdateL
         i->second.state = state;
 }
 
-int BindingUpdateList::generateBAuthData(const IPv6Address& dest, const IPv6Address& CoA)
+int BindingUpdateList::generateBAuthData(const Ipv6Address& dest, const Ipv6Address& CoA)
 {
     BindingUpdateList::BindingUpdateListEntry *entry = lookup(dest);
 
@@ -243,75 +224,71 @@ int BindingUpdateList::generateBAuthData(const IPv6Address& dest, const IPv6Addr
     return BindingUpdateList::generateKey(entry->tokenH, entry->tokenC, CoA);
 }
 
-int BindingUpdateList::generateKey(int homeToken, int careOfToken, const IPv6Address& CoA)
+int BindingUpdateList::generateKey(int homeToken, int careOfToken, const Ipv6Address& CoA)
 {
     // use a dummy value
     return homeToken + careOfToken;
 }
 
-int BindingUpdateList::generateHomeToken(const IPv6Address& HoA, int nonce)
+int BindingUpdateList::generateHomeToken(const Ipv6Address& HoA, int nonce)
 {
     return HO_TOKEN;
 }
 
-int BindingUpdateList::generateCareOfToken(const IPv6Address& CoA, int nonce)
+int BindingUpdateList::generateCareOfToken(const Ipv6Address& CoA, int nonce)
 {
     return CO_TOKEN;
 }
 
-void BindingUpdateList::resetHomeToken(const IPv6Address& dest, const IPv6Address& hoa)
+void BindingUpdateList::resetHomeToken(const Ipv6Address& dest, const Ipv6Address& hoa)
 {
     BindingUpdateList::BindingUpdateListEntry *entry = lookup(dest);
     ASSERT(entry != nullptr);
 
     entry->tokenH = UNDEFINED_TOKEN;
-    //entry->sentHoTI = 0;
+//    entry->sentHoTI = 0;
 }
 
-void BindingUpdateList::resetCareOfToken(const IPv6Address& dest, const IPv6Address& hoa)
+void BindingUpdateList::resetCareOfToken(const Ipv6Address& dest, const Ipv6Address& hoa)
 {
     BindingUpdateList::BindingUpdateListEntry *entry = lookup(dest);
     ASSERT(entry != nullptr);
 
     entry->tokenC = UNDEFINED_TOKEN;
-    //entry->sentCoTI = 0;
+//    entry->sentCoTI = 0;
 }
 
-bool BindingUpdateList::isHomeTokenAvailable(const IPv6Address& dest, InterfaceEntry *ie)
+bool BindingUpdateList::isHomeTokenAvailable(const Ipv6Address& dest, NetworkInterface *ie)
 {
     BindingUpdateList::BindingUpdateListEntry *entry = lookup(dest);
     ASSERT(entry != nullptr);
 
     return entry->tokenH != UNDEFINED_TOKEN &&
-           (entry->sentHoTI + ie->ipv6Data()->_getMaxTokenLifeTime()) > simTime();
+           (entry->sentHoTI + ie->getProtocolData<Ipv6InterfaceData>()->_getMaxTokenLifeTime()) > simTime();
 }
 
-bool BindingUpdateList::isCareOfTokenAvailable(const IPv6Address& dest, InterfaceEntry *ie)
+bool BindingUpdateList::isCareOfTokenAvailable(const Ipv6Address& dest, NetworkInterface *ie)
 {
     BindingUpdateList::BindingUpdateListEntry *entry = lookup(dest);
     ASSERT(entry != nullptr);
 
     return entry->tokenC != UNDEFINED_TOKEN &&
-           (entry->sentCoTI + ie->ipv6Data()->_getMaxTokenLifeTime()) > simTime();
+           (entry->sentCoTI + ie->getProtocolData<Ipv6InterfaceData>()->_getMaxTokenLifeTime()) > simTime();
 }
 
-bool BindingUpdateList::isInBindingUpdateList(const IPv6Address& dest) const
+bool BindingUpdateList::isInBindingUpdateList(const Ipv6Address& dest) const
 {
-    return bindingUpdateList.find(dest) != bindingUpdateList.end();
+    return containsKey(bindingUpdateList, dest);
 }
 
-uint BindingUpdateList::getSequenceNumber(const IPv6Address& dest)
+uint BindingUpdateList::getSequenceNumber(const Ipv6Address& dest)
 {
     // search for entry
     BindingUpdateList::BindingUpdateListEntry *entry = lookup(dest);
-
-    if (entry == nullptr)
-        return 0;
-
-    return entry->sequenceNumber;
+    return (entry != nullptr) ? entry->sequenceNumber : 0;
 }
 
-const IPv6Address& BindingUpdateList::getCoA(const IPv6Address& dest)
+const Ipv6Address& BindingUpdateList::getCoA(const Ipv6Address& dest)
 {
     // search for entry
     BindingUpdateList::BindingUpdateListEntry *entry = lookup(dest);
@@ -321,37 +298,25 @@ const IPv6Address& BindingUpdateList::getCoA(const IPv6Address& dest)
     return entry->careOfAddress;
 }
 
-bool BindingUpdateList::isInBindingUpdateList(const IPv6Address& dest, const IPv6Address& HoA)
+bool BindingUpdateList::isInBindingUpdateList(const Ipv6Address& dest, const Ipv6Address& HoA)
 {
     auto pos = bindingUpdateList.find(dest);
-
-    if (pos == bindingUpdateList.end())
-        return false;
-
-    return pos->second.homeAddress == HoA;
+    return (pos == bindingUpdateList.end()) ? false : pos->second.homeAddress == HoA;
 }
 
-bool BindingUpdateList::isValidBinding(const IPv6Address& dest)
+bool BindingUpdateList::isValidBinding(const Ipv6Address& dest)
 {
     BindingUpdateList::BindingUpdateListEntry *entry = lookup(dest);
-
-    if (entry == nullptr)
-        return false;
-
-    return entry->BAck && (entry->bindingLifetime < SIMTIME_DBL(simTime()));
+    return (entry == nullptr) ? false : entry->BAck && (entry->bindingLifetime < SIMTIME_DBL(simTime()));
 }
 
-bool BindingUpdateList::isBindingAboutToExpire(const IPv6Address& dest)
+bool BindingUpdateList::isBindingAboutToExpire(const Ipv6Address& dest)
 {
     BindingUpdateList::BindingUpdateListEntry *entry = lookup(dest);
-
-    if (entry == nullptr)
-        return true;
-
-    return entry->bindingLifetime < SIMTIME_DBL(simTime()) - PRE_BINDING_EXPIRY;
+    return (entry == nullptr) ? true : entry->bindingLifetime < SIMTIME_DBL(simTime()) - PRE_BINDING_EXPIRY;
 }
 
-bool BindingUpdateList::sentBindingUpdate(const IPv6Address& dest)
+bool BindingUpdateList::sentBindingUpdate(const Ipv6Address& dest)
 {
     BindingUpdateList::BindingUpdateListEntry *entry = lookup(dest);
 
@@ -362,7 +327,7 @@ bool BindingUpdateList::sentBindingUpdate(const IPv6Address& dest)
            && entry->sentTime != 0;
 }
 
-void BindingUpdateList::removeBinding(const IPv6Address& dest)
+void BindingUpdateList::removeBinding(const Ipv6Address& dest)
 {
     BindingUpdateList::BindingUpdateListEntry *entry = lookup(dest);
 
@@ -376,7 +341,7 @@ void BindingUpdateList::removeBinding(const IPv6Address& dest)
         bindingUpdateList.erase(dest);
 }
 
-void BindingUpdateList::suspendBinding(const IPv6Address& dest)
+void BindingUpdateList::suspendBinding(const Ipv6Address& dest)
 {
     BindingUpdateList::BindingUpdateListEntry *entry = lookup(dest);
 
@@ -385,32 +350,32 @@ void BindingUpdateList::suspendBinding(const IPv6Address& dest)
     entry->BAck = false;
 }
 
-bool BindingUpdateList::recentlySentCOTI(const IPv6Address& dest, InterfaceEntry *ie)
+bool BindingUpdateList::recentlySentCOTI(const Ipv6Address& dest, NetworkInterface *ie)
 {
     BindingUpdateList::BindingUpdateListEntry *entry = lookup(dest);
 
     ASSERT(entry != nullptr);
 
-    return entry->sentCoTI + ie->ipv6Data()->_getMaxTokenLifeTime() / 3 > simTime();
+    return entry->sentCoTI + ie->getProtocolData<Ipv6InterfaceData>()->_getMaxTokenLifeTime() / 3 > simTime();
 }
 
-bool BindingUpdateList::recentlySentHOTI(const IPv6Address& dest, InterfaceEntry *ie)
+bool BindingUpdateList::recentlySentHOTI(const Ipv6Address& dest, NetworkInterface *ie)
 {
     BindingUpdateList::BindingUpdateListEntry *entry = lookup(dest);
 
     ASSERT(entry != nullptr);
 
-    return entry->sentHoTI + ie->ipv6Data()->_getMaxTokenLifeTime() / 3 > simTime();
+    return entry->sentHoTI + ie->getProtocolData<Ipv6InterfaceData>()->_getMaxTokenLifeTime() / 3 > simTime();
 }
 
 void BindingUpdateList::resetBindingCacheEntry(BindingUpdateListEntry& entry)
 {
     entry.bindingLifetime = 0;
     entry.bindingExpiry = 0;
-    //entry.remainingLifetime = 0;
-    //entry.sequenceNumber = 0;
+//    entry.remainingLifetime = 0;
+//    entry.sequenceNumber = 0;
     entry.sentTime = 0;
-    //entry.nextBUTx = 0;
+//    entry.nextBUTx = 0;
     entry.BAck = false;
     entry.state = NONE;
 

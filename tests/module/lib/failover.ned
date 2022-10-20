@@ -1,20 +1,11 @@
 //
 // Copyright (C) 2008 Irene Ruengeler
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
 //
-// You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-//
+
+package inet.test.moduletest.lib;
 
 import inet.node.inet.Router;
 import inet.node.inet.StandardHost;
@@ -32,41 +23,41 @@ network failover
       {
         parameters:
           datarate = 1Mbps;
-	      per = 0.005;
+          per = 0.005;
       }
 
-	channel NormalPath extends DatarateChannel
-	{
-		parameters:
-			datarate = 1Gbps;
-	}
+    channel NormalPath extends DatarateChannel
+    {
+        parameters:
+            datarate = 1Gbps;
+    }
     submodules:
         sctp_client: StandardHost {
             parameters:
-                routingTable.routingFile = "../../lib/multi_client.mrt";
-                networkLayer.configurator.networkConfiguratorModule = "";
+                ipv4.routingTable.routingFile = "../../lib/multi_client.mrt";
+                ipv4.configurator.networkConfiguratorModule = "";
             gates:
                 pppg[2];
         }
         sctp_server: StandardHost {
             parameters:
-                routingTable.routingFile = "../../lib/multi_server.mrt";
-                networkLayer.configurator.networkConfiguratorModule = "";
+                ipv4.routingTable.routingFile = "../../lib/multi_server.mrt";
+                ipv4.configurator.networkConfiguratorModule = "";
             gates:
                 pppg[2];
 
         }
         router1: Router {
             parameters:
-                routingTable.routingFile = "../../lib/multi_router1.mrt";
-                networkLayer.configurator.networkConfiguratorModule = "";
+                ipv4.routingTable.routingFile = "../../lib/multi_router1.mrt";
+                ipv4.configurator.networkConfiguratorModule = "";
             gates:
                 pppg[4];
         }
         router2: Router {
             parameters:
-                routingTable.routingFile = "../../lib/multi_router2.mrt";
-                networkLayer.configurator.networkConfiguratorModule = "";
+                ipv4.routingTable.routingFile = "../../lib/multi_router2.mrt";
+                ipv4.configurator.networkConfiguratorModule = "";
             gates:
                 pppg[4];
         }

@@ -1,35 +1,21 @@
 //
-// Copyright (C) 2012 OpenSim Ltd
+// Copyright (C) 2012 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
-// @author Zoltan Bojthe
-//
+
 
 #ifndef __INET_CLOUDDELAYERBASE_H
 #define __INET_CLOUDDELAYERBASE_H
 
-#include "inet/common/INETDefs.h"
-
+#include "inet/common/packet/Packet.h"
 #include "inet/networklayer/contract/INetfilter.h"
 
 namespace inet {
 
-//forward declarations:
-class IPv4;
+// forward declarations:
 
-class INET_API CloudDelayerBase : public cSimpleModule, public INetfilter::IHook
+class INET_API CloudDelayerBase : public cSimpleModule, public NetfilterBase::HookBase
 {
   public:
     CloudDelayerBase();
@@ -47,17 +33,17 @@ class INET_API CloudDelayerBase : public cSimpleModule, public INetfilter::IHook
      */
     virtual void calculateDropAndDelay(const cMessage *msg, int srcID, int destID, bool& outDrop, simtime_t& outDelay);
 
-    virtual INetfilter::IHook::Result datagramPreRoutingHook(INetworkDatagram *datagram, const InterfaceEntry *inputInterfaceEntry, const InterfaceEntry *& outputInterfaceEntry, L3Address& nextHopAddress) override;
-    virtual INetfilter::IHook::Result datagramForwardHook(INetworkDatagram *datagram, const InterfaceEntry *inputInterfaceEntry, const InterfaceEntry *& outputInterfaceEntry, L3Address& nextHopAddress) override;
-    virtual INetfilter::IHook::Result datagramPostRoutingHook(INetworkDatagram *datagram, const InterfaceEntry *inputInterfaceEntry, const InterfaceEntry *& outputInterfaceEntry, L3Address& nextHopAddress) override;
-    virtual INetfilter::IHook::Result datagramLocalInHook(INetworkDatagram *datagram, const InterfaceEntry *inputInterfaceEntry) override;
-    virtual INetfilter::IHook::Result datagramLocalOutHook(INetworkDatagram *datagram, const InterfaceEntry *& outputInterfaceEntry, L3Address& nextHopAddress) override;
+    virtual INetfilter::IHook::Result datagramPreRoutingHook(Packet *datagram) override;
+    virtual INetfilter::IHook::Result datagramForwardHook(Packet *datagram) override;
+    virtual INetfilter::IHook::Result datagramPostRoutingHook(Packet *datagram) override;
+    virtual INetfilter::IHook::Result datagramLocalInHook(Packet *datagram) override;
+    virtual INetfilter::IHook::Result datagramLocalOutHook(Packet *datagram) override;
 
   protected:
-    IPv4 *ipv4Layer;
+    ModuleRefByPar<INetfilter> networkProtocol;
 };
 
 } // namespace inet
 
-#endif // ifndef __INET_CLOUDDELAYERBASE_H
+#endif
 

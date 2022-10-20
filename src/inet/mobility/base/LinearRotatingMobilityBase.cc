@@ -1,17 +1,9 @@
 //
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Copyright (C) 2020 OpenSim Ltd.
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/.
-//
+
 
 #include "inet/mobility/base/LinearRotatingMobilityBase.h"
 
@@ -19,7 +11,6 @@ namespace inet {
 
 LinearRotatingMobilityBase::LinearRotatingMobilityBase()
 {
-    targetOrientation = EulerAngles::ZERO;
 }
 
 void LinearRotatingMobilityBase::initializeOrientation()
@@ -45,13 +36,8 @@ void LinearRotatingMobilityBase::rotate()
     else if (now > lastUpdate) {
         ASSERT(nextChange == -1 || now < nextChange);
         double delta = (simTime() - lastUpdate).dbl() / (nextChange - lastUpdate).dbl();
-        lastOrientation = slerp(lastOrientation, targetOrientation, delta);
+        lastOrientation = Quaternion::slerp(lastOrientation, targetOrientation, delta);
     }
-}
-
-EulerAngles LinearRotatingMobilityBase::slerp(EulerAngles from, EulerAngles to, double delta)
-{
-    return from + (to - from) * delta;
 }
 
 } // namespace inet

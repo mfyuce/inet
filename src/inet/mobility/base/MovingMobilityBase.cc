@@ -1,24 +1,7 @@
-/* -*- mode:c++ -*- ********************************************************
- * file:        MovingMobilityBase.cc
- *
- * author:      Daniel Willkomm, Andras Varga, Zoltan Bojthe
- *
- * copyright:   (C) 2004 Telecommunication Networks Group (TKN) at
- *              Technische Universitaet Berlin, Germany.
- *
- *              (C) 2005 Andras Varga
- *              (C) 2011 Zoltan Bojthe
- *
- *              This program is free software; you can redistribute it
- *              and/or modify it under the terms of the GNU General Public
- *              License as published by the Free Software Foundation; either
- *              version 2 of the License, or (at your option) any later
- *              version.
- *              For further information see file COPYING
- *              in the top level directory
- ***************************************************************************
- * part of:     framework implementation developed by tkn
- **************************************************************************/
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+//
 
 #include "inet/mobility/base/MovingMobilityBase.h"
 
@@ -28,9 +11,10 @@ MovingMobilityBase::MovingMobilityBase() :
     moveTimer(nullptr),
     updateInterval(0),
     stationary(false),
-    lastSpeed(Coord::ZERO),
+    lastVelocity(Coord::ZERO),
     lastUpdate(0),
-    nextChange(-1)
+    nextChange(-1),
+    faceForward(false)
 {
 }
 
@@ -46,6 +30,7 @@ void MovingMobilityBase::initialize(int stage)
     if (stage == INITSTAGE_LOCAL) {
         moveTimer = new cMessage("move");
         updateInterval = par("updateInterval");
+        faceForward = par("faceForward");
     }
 }
 
@@ -61,15 +46,24 @@ void MovingMobilityBase::moveAndUpdate()
     simtime_t now = simTime();
     if (nextChange == now || lastUpdate != now) {
         move();
-        // determine orientation based on direction
-        Coord direction = lastSpeed;
-        direction.normalize();
-        lastOrientation.alpha = atan2(direction.y, direction.x);
-        lastOrientation.beta = asin(direction.z);
-        lastOrientation.gamma = 0.0;
+        orient();
         lastUpdate = simTime();
         emitMobilityStateChangedSignal();
-        updateVisualRepresentation();
+    }
+}
+
+void MovingMobilityBase::orient()
+{
+    if (faceForward) {
+        // determine orientation based on direction
+        if (lastVelocity != Coord::ZERO) {
+            Coord direction = lastVelocity;
+            direction.normalize();
+            auto alpha = rad(atan2(direction.y, direction.x));
+            auto beta = rad(-asin(direction.z));
+            auto gamma = rad(0.0);
+            lastOrientation = Quaternion(EulerAngles(alpha, beta, gamma));
+        }
     }
 }
 
@@ -97,22 +91,28 @@ void MovingMobilityBase::scheduleUpdate()
         scheduleAt(nextChange, moveTimer);
 }
 
-Coord MovingMobilityBase::getCurrentPosition()
+const Coord& MovingMobilityBase::getCurrentPosition()
 {
     moveAndUpdate();
     return lastPosition;
 }
 
-Coord MovingMobilityBase::getCurrentSpeed()
+const Coord& MovingMobilityBase::getCurrentVelocity()
 {
     moveAndUpdate();
-    return lastSpeed;
+    return lastVelocity;
 }
 
-EulerAngles MovingMobilityBase::getCurrentAngularPosition()
+const Quaternion& MovingMobilityBase::getCurrentAngularPosition()
 {
     moveAndUpdate();
     return lastOrientation;
+}
+
+const Quaternion& MovingMobilityBase::getCurrentAngularVelocity()
+{
+    moveAndUpdate();
+    return lastAngularVelocity;
 }
 
 } // namespace inet

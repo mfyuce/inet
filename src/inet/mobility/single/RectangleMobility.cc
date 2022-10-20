@@ -1,21 +1,12 @@
 //
-// Copyright (C) 2005 Andras Varga
+// Copyright (C) 2005 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
 
+
 #include "inet/mobility/single/RectangleMobility.h"
+
 #include "inet/common/INETMath.h"
 
 namespace inet {
@@ -82,25 +73,25 @@ void RectangleMobility::move()
         // top side
         lastPosition.x = constraintAreaMin.x + d;
         lastPosition.y = constraintAreaMin.y;
-        lastSpeed = Coord(speed, 0, 0);
+        lastVelocity = Coord(speed, 0, 0);
     }
     else if (d < corner2) {
         // right side
         lastPosition.x = constraintAreaMax.x;
         lastPosition.y = constraintAreaMin.y + d - corner1;
-        lastSpeed = Coord(0, speed, 0);
+        lastVelocity = Coord(0, speed, 0);
     }
     else if (d < corner3) {
         // bottom side
         lastPosition.x = constraintAreaMax.x - d + corner2;
         lastPosition.y = constraintAreaMax.y;
-        lastSpeed = Coord(-speed, 0, 0);
+        lastVelocity = Coord(-speed, 0, 0);
     }
     else {
         // left side
         lastPosition.x = constraintAreaMin.x;
         lastPosition.y = constraintAreaMax.y - d + corner3;
-        lastSpeed = Coord(0, -speed, 0);
+        lastVelocity = Coord(0, -speed, 0);
     }
 }
 

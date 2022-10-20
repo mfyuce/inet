@@ -1,29 +1,19 @@
-/***************************************************************************
- * file:        Coord.cc
- *
- * author:      Christian Frank
- *
- * copyright:   (C) 2004 Telecommunication Networks Group (TKN) at
- *              Technische Universitaet Berlin, Germany.
- *
- *              This program is free software; you can redistribute it
- *              and/or modify it under the terms of the GNU General Public
- *              License as published by the Free Software Foundation; either
- *              version 2 of the License, or (at your option) any later
- *              version.
- *              For further information see file COPYING
- *              in the top level directory
- ***************************************************************************
- * part of:     framework implementation developed by tkn
- **************************************************************************/
+//
+// Copyright (C) 2020 OpenSim Ltd.
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
 
-#include "assert.h"
+
 #include "inet/common/geometry/common/Coord.h"
+
+#include <assert.h>
 
 namespace inet {
 
 const Coord Coord::NIL = Coord(NaN, NaN, NaN);
 const Coord Coord::ZERO = Coord(0.0, 0.0, 0.0);
+const Coord Coord::ONE = Coord(1.0, 1.0, 1.0);
 const Coord Coord::X_AXIS = Coord(1.0, 0.0, 0.0);
 const Coord Coord::Y_AXIS = Coord(0.0, 1.0, 0.0);
 const Coord Coord::Z_AXIS = Coord(0.0, 0.0, 1.0);
@@ -44,7 +34,7 @@ static double dist(double coord1, double coord2, double size)
     else {
         assert(size != 0);
         double dist = math::modulo(difference, size);
-        return std::min(dist, size - dist);
+        return math::minnan(dist, size - dist);
     }
 }
 

@@ -1,24 +1,15 @@
 //
 // Copyright (C) 2016 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
+
 
 package inet.linklayer.csmaca;
 
-import inet.linklayer.base.MACProtocolBase;
-import inet.linklayer.contract.IMACProtocol;
+import inet.linklayer.base.MacProtocolBase;
+import inet.linklayer.contract.IMacProtocol;
+
 
 //
 // Implements an imaginary CSMA/CA-based MAC protocol with optional
@@ -55,20 +46,18 @@ import inet.linklayer.contract.IMACProtocol;
 // to keep its code simple and accessible, so lost ACKs will cause duplicates
 // in the stream of packets sent up to higher layers.
 //
-simple CsmaCaMac extends MACProtocolBase like IMACProtocol
+module CsmaCaMac extends MacProtocolBase like IMacProtocol
 {
     parameters:
         string radioModule = default("^.radio"); // The path to the Radio module  //FIXME remove default value
-        string address = default("auto"); // MAC address as hex string (12 hex digits), or
-                                          // "auto". "auto" values will be replaced by
-                                          // a generated MAC address in init stage 0.
-        string queueModule = default(""); // name of optional external queue module
-        int maxQueueSize = default(-1); // maximum queue length in frames; only used if queueModule==""
-        bool prioritizeByUP = default(false); // use priority queueing, based on IEEE 802.1d User Priority (UP)
+        string address @mutable = default("auto"); // MAC address as hex string (12 hex digits), or
+                                                   // "auto". "auto" values will be replaced by
+                                                   // a generated MAC address in init stage 0.
+        string fcsMode @enum("declared","computed") = default("declared");
         bool useAck = default(true);
         double bitrate @unit(bps);
-        int headerLength @unit(B) = default(8B);
-        int ackLength @unit(B) = default(headerLength);
+        int headerLength @unit(B) = default(17B); // maximum 255 byte, minimum 17B for serializing, see CsmaCaMacDataHeader
+        int ackLength @unit(B) = default(14B); // maximum 255 byte, minimum 14B for serializing, see CsmaCaMacAckHeader
         double sifsTime @unit(s) = default(10us);
         double slotTime @unit(s) = default(20us);
         double difsTime @unit(s) = default(sifsTime + 2 * slotTime);
@@ -79,5 +68,11 @@ simple CsmaCaMac extends MACProtocolBase like IMACProtocol
         int cwMulticast = default(cwMin); // multicast contention window
         int retryLimit = default(7); // maximum number of retries
         @class(CsmaCaMac);
-        @signal[NF_LINK_BREAK](type=CsmaCaMacFrame);
+        @signal[linkBroken](type=inet::Packet);
+        @statistic[linkBroken](title="link break"; source=linkBroken; record=count; interpolationmode=none);
+        @statistic[packetDropIncorrectlyReceived](title="packet drop: incorrectly received"; source=packetDropReasonIsIncorrectlyReceived(packetDropped); record=count,sum(packetBytes),vector(packetBytes); interpolationmode=none);
+        @statistic[packetDropNotAddressedToUs](title="packet drop: not addressed to us"; source=packetDropReasonIsNotAddressedToUs(packetDropped); record=count,sum(packetBytes),vector(packetBytes); interpolationmode=none);
+        @statistic[packetDropQueueOverflow](title="packet drop: queue overflow"; source=packetDropReasonIsQueueOverflow(packetDropped); record=count,sum(packetBytes),vector(packetBytes); interpolationmode=none);
+        @statistic[packetDropRetryLimitReached](title="packet drop: retry limit reached"; source=packetDropReasonIsRetryLimitReached(packetDropped); record=count,sum(packetBytes),vector(packetBytes); interpolationmode=none);
 }
+

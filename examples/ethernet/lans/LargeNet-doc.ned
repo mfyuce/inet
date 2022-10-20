@@ -1,21 +1,9 @@
 //
 // Copyright (C) 2003 CTIE, Monash University
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
 //
-// You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-//
-
 
 //
 // @page largenet.html, LargeNet model description
@@ -54,10 +42,10 @@
 // request-response based protocol such as SMB/CIFS (the Windows file
 // sharing protocol), HTTP, or a database client-server protocol.
 //
-// Every computer runs a client application (~EtherAppCli) which connects
+// Every computer runs a client application (~EtherAppClient) which connects
 // to one of the servers. There's one server attached to switches A, B,
 // C and D each: serverA, serverB, serverC and serverD -- server selection
-// is configured in omnetpp.ini). The servers run ~EtherAppSrv.
+// is configured in omnetpp.ini). The servers run ~EtherAppServer.
 // Clients periodically send a request to the server, and the request
 // packet contains how many bytes the client wants the server to send back
 // (this can mean one or more Ethernet frames, depending on the byte count).

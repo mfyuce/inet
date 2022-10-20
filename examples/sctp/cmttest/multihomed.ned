@@ -1,19 +1,8 @@
 //
 // Copyright (C) 2008 Irene Ruengeler
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 //
 
 package inet.examples.sctp.cmttest;
@@ -32,31 +21,31 @@ network multihomed
         sctp_client: StandardHost {
             parameters:
                 forwarding = false;
-                networkLayer.configurator.networkConfiguratorModule = "";
-                @display("p=61,142;i=device/laptop");
+                ipv4.configurator.networkConfiguratorModule = "";
+                @display("p=100,200;i=device/laptop");
             gates:
                 pppg[2];
         }
         sctp_server: StandardHost {
             parameters:
                 forwarding = false;
-                networkLayer.configurator.networkConfiguratorModule = "";
-                @display("p=426,135;i=device/server2");
+                ipv4.configurator.networkConfiguratorModule = "";
+                @display("p=450,200;i=device/server2");
             gates:
                 pppg[2];
 
         }
         router1: Router {
             parameters:
-                networkLayer.configurator.networkConfiguratorModule = "";
-                @display("p=188,77;i=abstract/router");
+                ipv4.configurator.networkConfiguratorModule = "";
+                @display("p=200,100;i=abstract/router");
             gates:
                 pppg[4];
         }
         router2: Router {
             parameters:
-                networkLayer.configurator.networkConfiguratorModule = "";
-                @display("p=323,75;i=abstract/router");
+                ipv4.configurator.networkConfiguratorModule = "";
+                @display("p=350,100;i=abstract/router");
             gates:
                 pppg[4];
         }

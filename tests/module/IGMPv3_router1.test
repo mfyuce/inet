@@ -17,8 +17,8 @@ output-scalar-file = "${resultdir}/${configname}-${runnumber}.sca"
 output-vector-file = "${resultdir}/${configname}-${runnumber}.vec"
 snapshot-file = "${resultdir}/${configname}-${runnumber}.sna"
 
-network=TestIGMPNetwork
-**.igmpType = "IGMPv3"
+network = inet.test.moduletest.lib.TestIGMPNetwork
+**.igmp.typename = "Igmpv3"
 **.IPForward = true
 **.multicastForwarding = true
 
@@ -34,14 +34,13 @@ network=TestIGMPNetwork
 %#
 %postrun-command: grep "IGMPTester: Received" test.out > received.out || true
 %contains-regex: received.out
-IGMPTester: Received: inet::IGMPv3Query<group=<unspec>, sourceList=,.*>.
-IGMPTester: Received: inet::IGMPv3Query<group=<unspec>, sourceList=,.*>.
-IGMPTester: Received: inet::IGMPv3Query<group=<unspec>, sourceList=,.*>.
-IGMPTester: Received: inet::IGMPv3Query<group=<unspec>, sourceList=,.*>.
+IGMPTester: Received: inet::Igmpv3Query<group=<unspec>, sourceList=\(\),.*>.
+IGMPTester: Received: inet::Igmpv3Query<group=<unspec>, sourceList=\(\),.*>.
+IGMPTester: Received: inet::Igmpv3Query<group=<unspec>, sourceList=\(\),.*>.
+IGMPTester: Received: inet::Igmpv3Query<group=<unspec>, sourceList=\(\),.*>.
 
 %#--------------------------------------------------------------------------------------------------------------
-%not-contains: stdout
-undisposed object:
-%not-contains: stdout
--- check module destructor
+%postrun-command: grep "undisposed object:" test.out > test_undisposed.out || true
+%not-contains: test_undisposed.out
+undisposed object: (
 %#--------------------------------------------------------------------------------------------------------------

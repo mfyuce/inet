@@ -1,7 +1,7 @@
 #ifndef __INET_FINDMODULE_H
 #define __INET_FINDMODULE_H
 
-#include <omnetpp.h>
+#include "inet/common/ModuleAccess.h"
 
 namespace inet {
 
@@ -109,8 +109,6 @@ class AccessModuleWrap
     {
     }
 
-    ;
-
     T *get(cModule *const from = nullptr)
     {
         if (!pModule) {
@@ -123,5 +121,5 @@ class AccessModuleWrap
 
 } // namespace inet
 
-#endif // ifndef __INET_FINDMODULE_H
+#endif
 

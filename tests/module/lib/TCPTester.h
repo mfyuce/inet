@@ -1,30 +1,20 @@
 //
-// Copyright (C) 2004 Andras Varga
+// Copyright (C) 2004 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-//
+
 
 #ifndef __TCPTESTER_H
 #define __TCPTESTER_H
 
 #include "inet/common/INETDefs.h"
 
-#include "inet/networklayer/contract/ipv4/IPv4Address.h"
-#include "inet/networklayer/ipv4/IPv4Datagram_m.h"
-#include "inet/transportlayer/tcp_common/TCPSegment.h"
-#include "inet/common/packet/PacketDump.h"
+#include "inet/common/packet/Packet.h"
+#include "inet/networklayer/contract/ipv4/Ipv4Address.h"
+#include "inet/networklayer/ipv4/Ipv4Header_m.h"
+#include "inet/transportlayer/tcp_common/TcpHeader.h"
+#include "PacketDump.h"
 
 namespace inet {
 
@@ -42,7 +32,7 @@ class INET_API TCPTesterBase : public cSimpleModule
     PacketDump tcpdump;
 
   protected:
-    void dump(TCPSegment *seg, bool fromA, const char *comment=NULL);
+    void dump(const Ptr<const inet::tcp::TcpHeader>& seg, int payloadLength, bool fromA, const char *comment=NULL);
 
   public:
     TCPTesterBase();
@@ -74,8 +64,8 @@ class INET_API TCPScriptableTester : public TCPTesterBase
 
   protected:
     void parseScript(const char *script);
-    void dispatchSegment(TCPSegment *seg);
-    void processIncomingSegment(TCPSegment *seg, bool fromA);
+    void dispatchSegment(Packet *pk);
+    void processIncomingSegment(Packet *pk, bool fromA);
 
   public:
     TCPScriptableTester() {}
@@ -97,8 +87,8 @@ class INET_API TCPRandomTester : public TCPTesterBase
     cPar *delay;
 
   protected:
-    void dispatchSegment(TCPSegment *seg);
-    void processIncomingSegment(TCPSegment *seg, bool fromA);
+    void dispatchSegment(Packet *pk);
+    void processIncomingSegment(Packet *pk, bool fromA);
 
   public:
     TCPRandomTester() {}

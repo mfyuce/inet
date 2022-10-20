@@ -1,32 +1,52 @@
 //
-// Copyright (C) 2016 OpenSim Ltd.
+// Copyright (C) 2020 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
 
+
+#include "inet/visualizer/base/PathVisualizerBase.h"
+
+#include "inet/common/FlowTag.h"
 #include "inet/common/LayeredProtocolBase.h"
 #include "inet/common/ModuleAccess.h"
+#include "inet/common/packet/Packet.h"
 #include "inet/mobility/contract/IMobility.h"
-#include "inet/visualizer/base/PathVisualizerBase.h"
 
 namespace inet {
 
 namespace visualizer {
 
-PathVisualizerBase::Path::Path(const std::vector<int>& path) :
-    moduleIds(path)
+PathVisualizerBase::PathVisualization::PathVisualization(const char *label, const std::vector<int>& path) :
+    ModulePath(path),
+    label(label)
 {
+}
+
+std::string PathVisualizerBase::DirectiveResolver::resolveDirective(char directive) const
+{
+    switch (directive) {
+        case 'p':
+            return std::to_string(pathVisualization->numPackets);
+        case 'l':
+            return pathVisualization->totalLength.str();
+        case 'L':
+            return pathVisualization->label;
+        case 'n':
+            return packet->getName();
+        case 'c':
+            return packet->getClassName();
+        default:
+            throw cRuntimeError("Unknown directive: %c", directive);
+    }
+}
+
+void PathVisualizerBase::preDelete(cComponent *root)
+{
+    if (displayRoutes) {
+        unsubscribe();
+        removeAllPathVisualizations();
+    }
 }
 
 void PathVisualizerBase::initialize(int stage)
@@ -34,178 +54,248 @@ void PathVisualizerBase::initialize(int stage)
     VisualizerBase::initialize(stage);
     if (!hasGUI()) return;
     if (stage == INITSTAGE_LOCAL) {
-        subscriptionModule = *par("subscriptionModule").stringValue() == '\0' ? getSystemModule() : getModuleFromPar<cModule>(par("subscriptionModule"), this);
-        subscriptionModule->subscribe(LayeredProtocolBase::packetSentToUpperSignal, this);
-        subscriptionModule->subscribe(LayeredProtocolBase::packetReceivedFromUpperSignal, this);
-        subscriptionModule->subscribe(LayeredProtocolBase::packetReceivedFromLowerSignal, this);
-        subscriptionModule->subscribe(IMobility::mobilityStateChangedSignal, this);
-        packetNameMatcher.setPattern(par("packetNameFilter"), false, true, true);
-        if (*par("lineColor").stringValue() != '\0')
-            lineColor = cFigure::Color(par("lineColor"));
+        displayRoutes = par("displayRoutes");
+        nodeFilter.setPattern(par("nodeFilter"));
+        packetFilter.setExpression(par("packetFilter").objectValue());
+        lineColorSet.parseColors(par("lineColor"));
+        lineStyle = cFigure::parseLineStyle(par("lineStyle"));
         lineWidth = par("lineWidth");
-        opacityHalfLife = par("opacityHalfLife");
+        lineSmooth = par("lineSmooth");
+        lineShift = par("lineShift");
+        lineShiftMode = par("lineShiftMode");
+        lineContactSpacing = par("lineContactSpacing");
+        lineContactMode = par("lineContactMode");
+        labelFormat.parseFormat(par("labelFormat"));
+        labelFont = cFigure::parseFont(par("labelFont"));
+        labelColorAsString = par("labelColor");
+        if (!opp_isempty(labelColorAsString))
+            labelColor = cFigure::Color(labelColorAsString);
+        fadeOutMode = par("fadeOutMode");
+        fadeOutTime = par("fadeOutTime");
+        fadeOutAnimationSpeed = par("fadeOutAnimationSpeed");
+        startPathSignal = registerSignal(par("startPathSignal"));
+        extendPathSignal = registerSignal(par("extendPathSignal"));
+        endPathSignal = registerSignal(par("endPathSignal"));
+        if (displayRoutes)
+            subscribe();
+    }
+}
+
+void PathVisualizerBase::handleParameterChange(const char *name)
+{
+    if (!hasGUI()) return;
+    if (name != nullptr) {
+        if (!strcmp(name, "nodeFilter"))
+            nodeFilter.setPattern(par("nodeFilter"));
+        else if (!strcmp(name, "packetFilter"))
+            packetFilter.setExpression(par("packetFilter").objectValue());
+        removeAllPathVisualizations();
     }
 }
 
 void PathVisualizerBase::refreshDisplay() const
 {
-    auto now = simTime();
-    std::vector<const Path *> removedPaths;
-    for (auto it : paths) {
-        auto path = it.second;
-        auto alpha = std::min(1.0, std::pow(2.0, -(now - path->lastUsage).dbl() / opacityHalfLife));
-        if (alpha < 0.01)
-            removedPaths.push_back(path);
-        else
-            setAlpha(path, alpha);
-    }
-    for (auto path : removedPaths) {
-        auto sourceAndDestination = std::pair<int, int>(path->moduleIds.front(), path->moduleIds.back());
-        const_cast<PathVisualizerBase *>(this)->removePath(sourceAndDestination, path);
-        delete path;
+    if (fadeOutTime > 0) {
+        AnimationPosition currentAnimationPosition;
+        std::vector<const PathVisualization *> removedPathVisualizations;
+        for (auto it : pathVisualizations) {
+            auto pathVisualization = it.second;
+            double delta;
+            if (!strcmp(fadeOutMode, "simulationTime"))
+                delta = (currentAnimationPosition.getSimulationTime() - pathVisualization->lastUsageAnimationPosition.getSimulationTime()).dbl();
+            else if (!strcmp(fadeOutMode, "animationTime"))
+                delta = currentAnimationPosition.getAnimationTime() - pathVisualization->lastUsageAnimationPosition.getAnimationTime();
+            else if (!strcmp(fadeOutMode, "realTime"))
+                delta = currentAnimationPosition.getRealTime() - pathVisualization->lastUsageAnimationPosition.getRealTime();
+            else
+                throw cRuntimeError("Unknown fadeOutMode: %s", fadeOutMode);
+            if (delta > fadeOutTime)
+                removedPathVisualizations.push_back(pathVisualization);
+            else
+                setAlpha(pathVisualization, 1 - delta / fadeOutTime);
+        }
+        for (auto path : removedPathVisualizations) {
+            const_cast<PathVisualizerBase *>(this)->removePathVisualization(path);
+            delete path;
+        }
     }
 }
 
-const PathVisualizerBase::Path *PathVisualizerBase::createPath(const std::vector<int>& path) const
+void PathVisualizerBase::subscribe()
 {
-    return new Path(path);
+    visualizationSubjectModule->subscribe(startPathSignal, this);
+    visualizationSubjectModule->subscribe(extendPathSignal, this);
+    visualizationSubjectModule->subscribe(endPathSignal, this);
 }
 
-const PathVisualizerBase::Path *PathVisualizerBase::getPath(std::pair<int, int> sourceAndDestination, const std::vector<int>& path)
+void PathVisualizerBase::unsubscribe()
 {
-    auto range = paths.equal_range(sourceAndDestination);
+    // NOTE: lookup the module again because it may have been deleted first
+    auto visualizationSubjectModule = findModuleFromPar<cModule>(par("visualizationSubjectModule"), this);
+    if (visualizationSubjectModule != nullptr) {
+        visualizationSubjectModule->unsubscribe(startPathSignal, this);
+        visualizationSubjectModule->unsubscribe(extendPathSignal, this);
+        visualizationSubjectModule->unsubscribe(endPathSignal, this);
+    }
+}
+
+std::string PathVisualizerBase::getPathVisualizationText(const PathVisualization *pathVisualization, cPacket *packet) const
+{
+    DirectiveResolver directiveResolver(pathVisualization, packet);
+    return labelFormat.formatString(&directiveResolver);
+}
+
+const PathVisualizerBase::PathVisualization *PathVisualizerBase::createPathVisualization(const char *label, const std::vector<int>& path, cPacket *packet) const
+{
+    return new PathVisualization(label, path);
+}
+
+const PathVisualizerBase::PathVisualization *PathVisualizerBase::getPathVisualization(const std::vector<int>& path)
+{
+    auto key = std::pair<int, int>(path.front(), path.back());
+    auto range = pathVisualizations.equal_range(key);
     for (auto it = range.first; it != range.second; it++)
         if (it->second->moduleIds == path)
             return it->second;
     return nullptr;
 }
 
-void PathVisualizerBase::addPath(std::pair<int, int> sourceAndDestination, const Path *path)
+void PathVisualizerBase::addPathVisualization(const PathVisualization *pathVisualization)
 {
-    paths.insert(std::pair<std::pair<int, int>, const Path *>(sourceAndDestination, path));
-    updateOffsets();
-    updatePositions();
+    auto sourceAndDestination = std::pair<int, int>(pathVisualization->moduleIds.front(), pathVisualization->moduleIds.back());
+    pathVisualizations.insert(std::pair<std::pair<int, int>, const PathVisualization *>(sourceAndDestination, pathVisualization));
 }
 
-void PathVisualizerBase::removePath(std::pair<int, int> sourceAndDestination, const Path *path)
+void PathVisualizerBase::removePathVisualization(const PathVisualization *pathVisualization)
 {
-    paths.erase(paths.find(sourceAndDestination));
-    updateOffsets();
-    updatePositions();
-}
-
-const std::vector<int> *PathVisualizerBase::getIncompletePath(int treeId)
-{
-    auto it = incompletePaths.find(treeId);
-    if (it == incompletePaths.end())
-        return nullptr;
-    else
-        return &it->second;
-}
-
-void PathVisualizerBase::addToIncompletePath(int treeId, cModule *module)
-{
-    incompletePaths[treeId].push_back(module->getId());
-}
-
-void PathVisualizerBase::removeIncompletePath(int treeId)
-{
-    incompletePaths.erase(incompletePaths.find(treeId));
-}
-
-void PathVisualizerBase::updateOffsets()
-{
-    numPaths.clear();
-    for (auto it : paths) {
-        auto path = it.second;
-        int count = 0;
-        int maxNumPath = 0;
-        for (auto id : path->moduleIds) {
-            int numPath = numPaths[id];
-            if (numPath == maxNumPath)
-                count++;
-            else if (numPath > maxNumPath) {
-                count = 1;
-                maxNumPath = numPath;
-            }
-            numPaths[id] = numPath + 1;
+    auto sourceAndDestination = std::pair<int, int>(pathVisualization->moduleIds.front(), pathVisualization->moduleIds.back());
+    auto range = pathVisualizations.equal_range(sourceAndDestination);
+    for (auto it = range.first; it != range.second; it++) {
+        if (it->second == pathVisualization) {
+            pathVisualizations.erase(it);
+            break;
         }
-        path->offset = 3 * (maxNumPath + (count > 1 ? 1 : 0));
     }
 }
 
-void PathVisualizerBase::updatePositions()
+void PathVisualizerBase::removeAllPathVisualizations()
 {
-    for (auto it : numPaths) {
-        auto id = it.first;
-        auto node = getSimulation()->getModule(id);
-        setPosition(node, getPosition(node));
+    incompletePaths.clear();
+    numPaths.clear();
+    std::vector<const PathVisualization *> removedPathVisualizations;
+    for (auto it : pathVisualizations)
+        removedPathVisualizations.push_back(it.second);
+    for (auto it : removedPathVisualizations) {
+        removePathVisualization(it);
+        delete it;
     }
 }
 
-void PathVisualizerBase::updatePath(const std::vector<int>& moduleIds)
+const std::vector<int> *PathVisualizerBase::getIncompletePath(const std::string& label, int chunkId)
 {
-    auto key = std::pair<int, int>(moduleIds.front(), moduleIds.back());
-    const Path *path = getPath(key, moduleIds);
-    if (path == nullptr) {
-        path = createPath(moduleIds);
-        addPath(key, path);
+    auto it = incompletePaths.find({ label, chunkId });
+    return (it == incompletePaths.end()) ? nullptr : &it->second;
+}
+
+void PathVisualizerBase::addToIncompletePath(const std::string& label, int chunkId, cModule *module)
+{
+    auto& moduleIds = incompletePaths[{ label, chunkId }];
+    auto moduleId = module->getId();
+    if (moduleIds.size() == 0 || moduleIds[moduleIds.size() - 1] != moduleId)
+        moduleIds.push_back(moduleId);
+}
+
+void PathVisualizerBase::removeIncompletePath(const std::string& label, int chunkId)
+{
+    incompletePaths.erase(incompletePaths.find({ label, chunkId }));
+}
+
+void PathVisualizerBase::refreshPathVisualization(const PathVisualization *pathVisualization, cPacket *packet)
+{
+    pathVisualization->lastUsageAnimationPosition = AnimationPosition();
+}
+
+void PathVisualizerBase::processPathStart(cModule *networkNode, const char *label, Packet *packet)
+{
+    mapChunks(packet->peekAt(b(0), packet->getTotalLength()), [&] (const Ptr<const Chunk>& chunk, int chunkId) {
+        auto path = getIncompletePath(label, chunkId);
+        if (path != nullptr)
+            removeIncompletePath(label, chunkId);
+        addToIncompletePath(label, chunkId, networkNode);
+    });
+}
+
+void PathVisualizerBase::processPathElement(cModule *networkNode, const char *label, Packet *packet)
+{
+    mapChunks(packet->peekAt(b(0), packet->getTotalLength()), [&] (const Ptr<const Chunk>& chunk, int chunkId) {
+        auto path = getIncompletePath(label, chunkId);
+        if (path != nullptr)
+            addToIncompletePath(label, chunkId, networkNode);
+    });
+}
+
+void PathVisualizerBase::processPathEnd(cModule *networkNode, const char *label, Packet *packet)
+{
+    std::set<const PathVisualization *> updatedVisualizations;
+    mapChunks(packet->peekAt(b(0), packet->getTotalLength()), [&] (const Ptr<const Chunk>& chunk, int chunkId) {
+        auto path = getIncompletePath(label, chunkId);
+        if (path != nullptr) {
+            addToIncompletePath(label, chunkId, networkNode);
+            if (path->size() > 1) {
+                auto pathVisualization = getPathVisualization(*path);
+                if (pathVisualization == nullptr) {
+                    pathVisualization = createPathVisualization(label, *path, packet);
+                    addPathVisualization(pathVisualization);
+                }
+                pathVisualization->totalLength += chunk->getChunkLength();
+                updatedVisualizations.insert(pathVisualization);
+            }
+            removeIncompletePath(label, chunkId);
+        }
+    });
+    for (auto pathVisualization : updatedVisualizations) {
+        pathVisualization->numPackets++;
+        refreshPathVisualization(pathVisualization, packet);
     }
-    else
-        path->lastUsage = simTime();
 }
 
 void PathVisualizerBase::receiveSignal(cComponent *source, simsignal_t signal, cObject *object, cObject *details)
 {
-    if (signal == IMobility::mobilityStateChangedSignal) {
-        auto mobility = dynamic_cast<IMobility *>(object);
-        auto position = mobility->getCurrentPosition();
+    Enter_Method("%s", cComponent::getSignalName(signal));
+
+    if (signal == startPathSignal) {
         auto module = check_and_cast<cModule *>(source);
-        auto node = getContainingNode(module);
-        setPosition(node, position);
-    }
-    else if (signal == LayeredProtocolBase::packetReceivedFromUpperSignal) {
-        if (isPathEnd(static_cast<cModule *>(source))) {
-            auto packet = check_and_cast<cPacket *>(object);
-            if (packetNameMatcher.matches(packet->getFullName())) {
-                auto treeId = packet->getTreeId();
-                auto module = check_and_cast<cModule *>(source);
-                addToIncompletePath(treeId, getContainingNode(module));
-            }
+        if (isPathStart(module)) {
+            auto networkNode = getContainingNode(module);
+            auto packet = check_and_cast<Packet *>(object);
+            auto label = details != nullptr ? details->getName() : "";
+            if (nodeFilter.matches(networkNode) && packetFilter.matches(packet))
+                processPathStart(networkNode, label, packet);
         }
     }
-    else if (signal == LayeredProtocolBase::packetReceivedFromLowerSignal) {
-        if (isPathEnd(static_cast<cModule *>(source))) {
-            auto packet = check_and_cast<cPacket *>(object);
-            if (packetNameMatcher.matches(packet->getFullName())) {
-                auto treeId = packet->getEncapsulatedPacket()->getTreeId();
-                auto module = check_and_cast<cModule *>(source);
-                addToIncompletePath(treeId, getContainingNode(module));
-            }
-        }
-        else if (isPathElement(static_cast<cModule *>(source))) {
-            auto packet = check_and_cast<cPacket *>(object);
-            if (packetNameMatcher.matches(packet->getFullName())) {
-                auto encapsulatedPacket = packet->getEncapsulatedPacket()->getEncapsulatedPacket();
-                if (encapsulatedPacket != nullptr) {
-                    auto treeId = encapsulatedPacket->getTreeId();
-                    auto module = check_and_cast<cModule *>(source);
-                    addToIncompletePath(treeId, getContainingNode(module));
-                }
-            }
+    else if (signal == extendPathSignal) {
+        auto module = check_and_cast<cModule *>(source);
+        if (isPathElement(module)) {
+            auto networkNode = getContainingNode(module);
+            auto packet = check_and_cast<Packet *>(object);
+            auto label = details != nullptr ? details->getName() : "";
+            // NOTE: nodeFilter is intentionally not applied here, because it's only important at the end points
+            if (packetFilter.matches(packet))
+                processPathElement(networkNode, label, packet);
         }
     }
-    else if (signal == LayeredProtocolBase::packetSentToUpperSignal) {
-        if (isPathEnd(static_cast<cModule *>(source))) {
-            auto packet = check_and_cast<cPacket *>(object);
-            if (packetNameMatcher.matches(packet->getFullName())) {
-                auto treeId = packet->getTreeId();
-                auto path = getIncompletePath(treeId);
-                updatePath(*path);
-                removeIncompletePath(treeId);
-            }
+    else if (signal == endPathSignal) {
+        auto module = check_and_cast<cModule *>(source);
+        if (isPathEnd(module)) {
+            auto networkNode = getContainingNode(module);
+            auto packet = check_and_cast<Packet *>(object);
+            auto label = details != nullptr ? details->getName() : "";
+            if (nodeFilter.matches(networkNode) && packetFilter.matches(packet))
+                processPathEnd(networkNode, label, packet);
         }
     }
+    else
+        throw cRuntimeError("Unknown signal");
 }
 
 } // namespace visualizer

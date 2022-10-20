@@ -1,20 +1,11 @@
 //
-// Author: Emin Ilker Cetinbas (niw3_at_yahoo_d0t_com)
-// Generalization: Andras Varga
 // Copyright (C) 2005 Emin Ilker Cetinbas, Andras Varga
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
 //
-// You should have received a copy of the GNU General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
+// Author: Emin Ilker Cetinbas (niw3_at_yahoo_d0t_com)
+// Generalization: Andras Varga
 //
 
 package inet.mobility.single;
@@ -40,14 +31,16 @@ import inet.mobility.base.MovingMobilityBase;
 // wall at the same angle; in our simulated world, there is little other
 // choice."
 //
-// This implementation can be parameterized a bit more, via the changeInterval,
-// changeAngleBy and changeSpeedBy parameters. The parameters described above
+// This implementation can be parameterized a bit more, via the changeInterval
+// and angleDelta parameters. The parameters described above
 // correspond to the following settings:
 //    - changeInterval = normal(5, 0.1)
-//    - changeAngleBy = normal(0, 30)
+//    - angleDelta = normal(0, 30)
 //    - speed = normal(avgSpeed, 0.01)
 //
-// @author Emin Ilker Cetinbas, Andras Varga
+// 3D (spatial movement) is also supported using rotationAxisAngle parameter.
+//
+// @author Emin Ilker Cetinbas
 //
 simple MassMobility extends MovingMobilityBase
 {
@@ -55,10 +48,13 @@ simple MassMobility extends MovingMobilityBase
         double initialX @unit(m) = default(uniform(constraintAreaMinX, constraintAreaMaxX));
         double initialY @unit(m) = default(uniform(constraintAreaMinY, constraintAreaMaxY));
         double initialZ @unit(m) = default(nanToZero(uniform(constraintAreaMinZ, constraintAreaMaxZ)));
-        double startAngle @unit(deg) = default(uniform(0deg, 360deg)); // initial angle in degrees
-        bool initFromDisplayString = default(true);
+        double initialMovementHeading @unit(deg) = default(uniform(0deg, 360deg)); // initial heading
+        double initialMovementElevation @unit(deg) = default(0deg); // initial elevation
+        bool initFromDisplayString = default(true); // enables one time initialization from the subject module's display string
         volatile double changeInterval @unit(s); // frequency of changing speed and angle (can be random)
-        volatile double changeAngleBy @unit(deg); // change angle by this much (can be random)
-        volatile double speed @unit(mps); // speed (can be random, updated every changeInterval)
+        volatile double angleDelta @unit(deg); // rotate velocity vector by this much around the rotation axis defined by the rotationAxisAngle parameter (can be random)
+        volatile double rotationAxisAngle @unit(deg) = default(0deg); // defines a vector in the plane perpendicular to the velocity, where 0 deg means the Z axis when bank is zero (can be random)
+        volatile double speed @mutable @unit(mps); // speed (can be random, updated every changeInterval)
         @class(MassMobility);
 }
+

@@ -1,29 +1,17 @@
 //
-// Copyright (C) 2016 OpenSim Ltd
+// Copyright (C) 2016 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
+
 
 #ifndef __INET_THERMOMETERFIGURE_H
 #define __INET_THERMOMETERFIGURE_H
 
-#include "inet/common/INETDefs.h"
 #include "inet/common/INETMath.h"
-#include "IIndicatorFigure.h"
+#include "inet/common/figures/IIndicatorFigure.h"
 
-// for the moment commented out as omnet cannot instatiate it from a namespace
-//namespace inet {
+namespace inet {
 
 class INET_API ThermometerFigure : public cGroupFigure, public inet::IIndicatorFigure
 {
@@ -40,6 +28,7 @@ class INET_API ThermometerFigure : public cGroupFigure, public inet::IIndicatorF
     double value = NaN;
     int numTicks = 0;
     double shifting = 0;
+    int labelOffset = 10;
 
   protected:
     virtual void parse(cProperty *property) override;
@@ -59,6 +48,7 @@ class INET_API ThermometerFigure : public cGroupFigure, public inet::IIndicatorF
     ThermometerFigure(const char *name = nullptr);
     virtual ~ThermometerFigure();
 
+    virtual const Point getSize() const override { return getBounds().getSize(); }
     virtual void setValue(int series, simtime_t timestamp, double value) override;
 
     const Rectangle& getBounds() const;
@@ -69,6 +59,9 @@ class INET_API ThermometerFigure : public cGroupFigure, public inet::IIndicatorF
 
     const char *getLabel() const;
     void setLabel(const char *text);
+
+    int getLabelOffset() const;
+    void setLabelOffset(int offset);
 
     const Font& getLabelFont() const;
     void setLabelFont(const Font& font);
@@ -86,7 +79,7 @@ class INET_API ThermometerFigure : public cGroupFigure, public inet::IIndicatorF
     void setTickSize(double value);
 };
 
-// } // namespace inet
+} // namespace inet
 
-#endif // ifndef __INET_ThermoMeterFigure_H
+#endif
 

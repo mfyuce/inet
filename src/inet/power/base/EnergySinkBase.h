@@ -1,19 +1,9 @@
 //
-// Copyright (C) 2013 OpenSim Ltd.
+// Copyright (C) 2020 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
+
 
 #ifndef __INET_ENERGYSINKBASE_H
 #define __INET_ENERGYSINKBASE_H
@@ -24,69 +14,21 @@ namespace inet {
 
 namespace power {
 
-/**
- * This is an abstract base class that provides a list of energy generators
- * attached to the energy sink.
- *
- * @author Levente Meszaros
- */
 class INET_API EnergySinkBase : public virtual IEnergySink
 {
   protected:
-    struct EnergyGeneratorEntry
-    {
-      public:
-        /**
-         * The owner energy generator.
-         */
-        const IEnergyGenerator *energyGenerator;
-
-        /**
-         * The current power generation.
-         */
-        W generatedPower;
-
-      public:
-        EnergyGeneratorEntry(const IEnergyGenerator *energyGenerator, W generatedPower) :
-            energyGenerator(energyGenerator), generatedPower(generatedPower) {}
-    };
-
-    /**
-     * List of currently known energy generators.
-     */
-    std::vector<EnergyGeneratorEntry> energyGenerators;
-
-    /**
-     * The current total power generation.
-     */
-    W totalGeneratedPower;
-
-  protected:
-    virtual void initialize(int stage);
-
-    W computeTotalGeneratedPower();
+    std::vector<const IEnergyGenerator *> energyGenerators;
 
   public:
-    EnergySinkBase();
-
     virtual int getNumEnergyGenerators() const override { return energyGenerators.size(); }
-
-    virtual const IEnergyGenerator *getEnergyGenerator(int energyGeneratorId) const override;
-
-    virtual int addEnergyGenerator(const IEnergyGenerator *energyGenerator) override;
-
-    virtual void removeEnergyGenerator(int energyGeneratorId) override;
-
-    virtual W getTotalPowerGeneration() const override { return totalGeneratedPower; }
-
-    virtual W getPowerGeneration(int energyGeneratorId) const override;
-
-    virtual void setPowerGeneration(int energyGeneratorId, W generatedPower) override;
+    virtual const IEnergyGenerator *getEnergyGenerator(int index) const override;
+    virtual void addEnergyGenerator(const IEnergyGenerator *energyGenerator) override;
+    virtual void removeEnergyGenerator(const IEnergyGenerator *energyGenerator) override;
 };
 
 } // namespace power
 
 } // namespace inet
 
-#endif // ifndef __INET_ENERGYSINKBASE_H
+#endif
 

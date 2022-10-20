@@ -1,22 +1,13 @@
 //
-// Copyright (C) 2012 Opensim Ltd.
-// Author: Tamas Borbely
+// Copyright (C) 2012 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
 
+
 package inet.networklayer.diffserv;
+
+import inet.queueing.base.PacketClassifierBase;
 
 //
 // This classifier contains a list of filters that identifies
@@ -29,16 +20,14 @@ package inet.networklayer.diffserv;
 //
 // See RFC 2475 2.3.1, RFC 3290 4.2.2
 //
-simple MultiFieldClassifier
+simple MultiFieldClassifier extends PacketClassifierBase
 {
     parameters:
         xml filters = default(xml("<filters/>"));
-        @display("i=block/classifier");
-
+        @class(MultiFieldClassifier);
         @signal[pkClass](type=long);
         @statistic[pkClass](title="packet class"; source=pkClass; record=vector; interpolationmode=none);
     gates:
-        input in;
-        output outs[];
         output defaultOut;
 }
+

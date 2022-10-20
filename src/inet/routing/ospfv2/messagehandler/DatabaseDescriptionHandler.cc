@@ -1,45 +1,33 @@
 //
 // Copyright (C) 2006 Andras Babos and Andras Varga
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
 
 #include "inet/routing/ospfv2/messagehandler/DatabaseDescriptionHandler.h"
 
-#include "inet/routing/ospfv2/router/OSPFArea.h"
-#include "inet/routing/ospfv2/interface/OSPFInterface.h"
-#include "inet/routing/ospfv2/neighbor/OSPFNeighbor.h"
-#include "inet/routing/ospfv2/router/OSPFRouter.h"
+#include "inet/routing/ospfv2/interface/Ospfv2Interface.h"
+#include "inet/routing/ospfv2/neighbor/Ospfv2Neighbor.h"
+#include "inet/routing/ospfv2/router/Ospfv2Area.h"
+#include "inet/routing/ospfv2/router/Ospfv2Router.h"
 
 namespace inet {
-
-namespace ospf {
+namespace ospfv2 {
 
 DatabaseDescriptionHandler::DatabaseDescriptionHandler(Router *containingRouter) :
     IMessageHandler(containingRouter)
 {
 }
 
-void DatabaseDescriptionHandler::processPacket(OSPFPacket *packet, Interface *intf, Neighbor *neighbor)
+void DatabaseDescriptionHandler::processPacket(Packet *packet, Ospfv2Interface *intf, Neighbor *neighbor)
 {
     router->getMessageHandler()->printEvent("Database Description packet received", intf, neighbor);
 
-    OSPFDatabaseDescriptionPacket *ddPacket = check_and_cast<OSPFDatabaseDescriptionPacket *>(packet);
+    const auto& ddPacket = packet->peekAtFront<Ospfv2DatabaseDescriptionPacket>();
 
     Neighbor::NeighborStateType neighborState = neighbor->getState();
 
-    if ((ddPacket->getInterfaceMTU() <= intf->getMTU()) &&
+    if ((ddPacket->getInterfaceMTU() <= intf->getMtu()) &&
         (neighborState > Neighbor::ATTEMPT_STATE))
     {
         switch (neighborState) {
@@ -51,13 +39,13 @@ void DatabaseDescriptionHandler::processPacket(OSPFPacket *packet, Interface *in
                 break;
 
             case Neighbor::EXCHANGE_START_STATE: {
-                OSPFDDOptions& ddOptions = ddPacket->getDdOptions();
+                const Ospfv2DdOptions& ddOptions = ddPacket->getDdOptions();
 
                 if (ddOptions.I_Init && ddOptions.M_More && ddOptions.MS_MasterSlave &&
                     (ddPacket->getLsaHeadersArraySize() == 0))
                 {
                     if (neighbor->getNeighborID() > router->getRouterID()) {
-                        Neighbor::DDPacketID packetID;
+                        Neighbor::DdPacketId packetID;
                         packetID.ddOptions = ddOptions;
                         packetID.options = ddPacket->getOptions();
                         packetID.sequenceNumber = ddPacket->getDdSequenceNumber();
@@ -67,7 +55,7 @@ void DatabaseDescriptionHandler::processPacket(OSPFPacket *packet, Interface *in
                         neighbor->setDDSequenceNumber(packetID.sequenceNumber);
                         neighbor->setLastReceivedDDPacket(packetID);
 
-                        if (!processDDPacket(ddPacket, intf, neighbor, true)) {
+                        if (!processDDPacket(ddPacket.get(), intf, neighbor, true)) {
                             break;
                         }
 
@@ -88,7 +76,7 @@ void DatabaseDescriptionHandler::processPacket(OSPFPacket *packet, Interface *in
                     (ddPacket->getDdSequenceNumber() == neighbor->getDDSequenceNumber()) &&
                     (neighbor->getNeighborID() < router->getRouterID()))
                 {
-                    Neighbor::DDPacketID packetID;
+                    Neighbor::DdPacketId packetID;
                     packetID.ddOptions = ddOptions;
                     packetID.options = ddPacket->getOptions();
                     packetID.sequenceNumber = ddPacket->getDdSequenceNumber();
@@ -97,7 +85,7 @@ void DatabaseDescriptionHandler::processPacket(OSPFPacket *packet, Interface *in
                     neighbor->setDatabaseExchangeRelationship(Neighbor::MASTER);
                     neighbor->setLastReceivedDDPacket(packetID);
 
-                    if (!processDDPacket(ddPacket, intf, neighbor, true)) {
+                    if (!processDDPacket(ddPacket.get(), intf, neighbor, true)) {
                         break;
                     }
 
@@ -114,7 +102,7 @@ void DatabaseDescriptionHandler::processPacket(OSPFPacket *packet, Interface *in
             break;
 
             case Neighbor::EXCHANGE_STATE: {
-                Neighbor::DDPacketID packetID;
+                Neighbor::DdPacketId packetID;
                 packetID.ddOptions = ddPacket->getDdOptions();
                 packetID.options = ddPacket->getOptions();
                 packetID.sequenceNumber = ddPacket->getDdSequenceNumber();
@@ -136,7 +124,7 @@ void DatabaseDescriptionHandler::processPacket(OSPFPacket *packet, Interface *in
                              (packetID.sequenceNumber == (neighbor->getDDSequenceNumber() + 1))))
                         {
                             neighbor->setLastReceivedDDPacket(packetID);
-                            if (!processDDPacket(ddPacket, intf, neighbor, false)) {
+                            if (!processDDPacket(ddPacket.get(), intf, neighbor, false)) {
                                 break;
                             }
                             if (!neighbor->isLinkStateRequestListEmpty() &&
@@ -162,7 +150,7 @@ void DatabaseDescriptionHandler::processPacket(OSPFPacket *packet, Interface *in
 
             case Neighbor::LOADING_STATE:
             case Neighbor::FULL_STATE: {
-                Neighbor::DDPacketID packetID;
+                Neighbor::DdPacketId packetID;
                 packetID.ddOptions = ddPacket->getDdOptions();
                 packetID.options = ddPacket->getOptions();
                 packetID.sequenceNumber = ddPacket->getDdSequenceNumber();
@@ -188,7 +176,7 @@ void DatabaseDescriptionHandler::processPacket(OSPFPacket *packet, Interface *in
     }
 }
 
-bool DatabaseDescriptionHandler::processDDPacket(OSPFDatabaseDescriptionPacket *ddPacket, Interface *intf, Neighbor *neighbor, bool inExchangeStart)
+bool DatabaseDescriptionHandler::processDDPacket(const Ospfv2DatabaseDescriptionPacket *ddPacket, Ospfv2Interface *intf, Neighbor *neighbor, bool inExchangeStart)
 {
     EV_INFO << "  Processing packet contents(ddOptions="
             << ((ddPacket->getDdOptions().I_Init) ? "I " : "_ ")
@@ -201,8 +189,8 @@ bool DatabaseDescriptionHandler::processDDPacket(OSPFDatabaseDescriptionPacket *
     unsigned int headerCount = ddPacket->getLsaHeadersArraySize();
 
     for (unsigned int i = 0; i < headerCount; i++) {
-        OSPFLSAHeader& currentHeader = ddPacket->getLsaHeaders(i);
-        LSAType lsaType = static_cast<LSAType>(currentHeader.getLsType());
+        const Ospfv2LsaHeader& currentHeader = ddPacket->getLsaHeaders(i);
+        Ospfv2LsaType lsaType = static_cast<Ospfv2LsaType>(currentHeader.getLsType());
 
         EV_DETAIL << "    " << currentHeader;
 
@@ -214,12 +202,12 @@ bool DatabaseDescriptionHandler::processDDPacket(OSPFDatabaseDescriptionPacket *
             return false;
         }
         else {
-            LSAKeyType lsaKey;
+            LsaKeyType lsaKey;
 
             lsaKey.linkStateID = currentHeader.getLinkStateID();
             lsaKey.advertisingRouter = currentHeader.getAdvertisingRouter();
 
-            OSPFLSA *lsaInDatabase = router->findLSA(lsaType, lsaKey, intf->getArea()->getAreaID());
+            Ospfv2Lsa *lsaInDatabase = router->findLSA(lsaType, lsaKey, intf->getArea()->getAreaID());
 
             // operator< and operator== on OSPFLSAHeaders determines which one is newer(less means older)
             if ((lsaInDatabase == nullptr) || (lsaInDatabase->getHeader() < currentHeader)) {
@@ -233,7 +221,7 @@ bool DatabaseDescriptionHandler::processDDPacket(OSPFDatabaseDescriptionPacket *
     if (neighbor->getDatabaseExchangeRelationship() == Neighbor::MASTER) {
         neighbor->incrementDDSequenceNumber();
         if ((neighbor->getDatabaseSummaryListCount() == 0) && !ddPacket->getDdOptions().M_More) {
-            neighbor->processEvent(Neighbor::EXCHANGE_DONE);    // does nothing in ExchangeStart
+            neighbor->processEvent(Neighbor::EXCHANGE_DONE); // does nothing in ExchangeStart
         }
         else {
             if (!inExchangeStart) {
@@ -249,13 +237,12 @@ bool DatabaseDescriptionHandler::processDDPacket(OSPFDatabaseDescriptionPacket *
         if (!ddPacket->getDdOptions().M_More &&
             (neighbor->getDatabaseSummaryListCount() == 0))
         {
-            neighbor->processEvent(Neighbor::EXCHANGE_DONE);    // does nothing in ExchangeStart
+            neighbor->processEvent(Neighbor::EXCHANGE_DONE); // does nothing in ExchangeStart
         }
     }
     return true;
 }
 
-} // namespace ospf
-
+} // namespace ospfv2
 } // namespace inet
 

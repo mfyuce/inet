@@ -10,8 +10,8 @@
 
 #include <map>
 
-#include "inet/networklayer/probabilistic/ProbabilisticBroadcast.h"
 #include "inet/networklayer/common/L3Address.h"
+#include "inet/networklayer/probabilistic/ProbabilisticBroadcast.h"
 
 namespace inet {
 
@@ -26,12 +26,7 @@ namespace inet {
 class INET_API AdaptiveProbabilisticBroadcast : public ProbabilisticBroadcast
 {
   public:
-    AdaptiveProbabilisticBroadcast()
-        : ProbabilisticBroadcast()
-        , timeInNeighboursTable()
-        , bvec()
-        , neighMap()
-    {}
+    AdaptiveProbabilisticBroadcast() {}
 
     /** @brief Initialization of the module and some variables*/
     virtual void initialize(int) override;
@@ -40,22 +35,22 @@ class INET_API AdaptiveProbabilisticBroadcast : public ProbabilisticBroadcast
     typedef std::map<L3Address, cMessage *> NeighborMap;
 
     /** @brief Handle messages from lower layer */
-    virtual void handleLowerPacket(cPacket *msg) override;
+    virtual void handleLowerPacket(Packet *packet) override;
 
     /** @brief Handle self messages */
     virtual void handleSelfMessage(cMessage *msg) override;
 
-    void updateNeighMap(ProbabilisticBroadcastDatagram *m);
+    void updateNeighMap(const ProbabilisticBroadcastHeader *m);
 
     void updateBeta();
 
-    //read from omnetpp.ini
-    simtime_t timeInNeighboursTable;    ///< @brief Default ttl for NeighborTable entries in seconds
+    // read from omnetpp.ini
+    simtime_t timeInNeighboursTable; ///< @brief Default ttl for NeighborTable entries in seconds
     cOutVector bvec;
     NeighborMap neighMap;
 };
 
 } // namespace inet
 
-#endif // ifndef __INET_ADAPTIVEPROBABILISTICBROADCAST_H
+#endif
 

@@ -1,26 +1,15 @@
 //
-// Copyright (C) 2016 OpenSim Ltd
+// Copyright (C) 2016 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
 
-#include "GaugeFigure.h"
+
+#include "inet/common/figures/GaugeFigure.h"
+
 #include "inet/common/INETUtils.h"
 
-//TODO namespace inet { -- for the moment commented out, as OMNeT++ 5.0 cannot instantiate a figure from a namespace
-using namespace inet;
+namespace inet {
 
 Register_Figure("gauge", GaugeFigure);
 
@@ -51,6 +40,7 @@ static const char *PKEY_POS = "pos";
 static const char *PKEY_SIZE = "size";
 static const char *PKEY_ANCHOR = "anchor";
 static const char *PKEY_BOUNDS = "bounds";
+static const char *PKEY_LABEL_OFFSET = "labelOffset";
 
 inline double zeroToOne(double x) { return x == 0 ? 1 : x; }
 
@@ -62,12 +52,12 @@ GaugeFigure::GaugeFigure(const char *name) : cGroupFigure(name)
 GaugeFigure::~GaugeFigure()
 {
     // delete figures which is not in canvas
-    for (int i = curvesOnCanvas; i < curveFigures.size(); ++i)
-        delete curveFigures[i];
+    for (size_t i = curvesOnCanvas; i < curveFigures.size(); ++i)
+        dropAndDelete(curveFigures[i]);
 
-    for (int i = numTicks; i < tickFigures.size(); ++i) {
-        delete tickFigures[i];
-        delete numberFigures[i];
+    for (size_t i = numTicks; i < tickFigures.size(); ++i) {
+        dropAndDelete(tickFigures[i]);
+        dropAndDelete(numberFigures[i]);
     }
 }
 
@@ -110,6 +100,19 @@ const char *GaugeFigure::getLabel() const
 void GaugeFigure::setLabel(const char *text)
 {
     labelFigure->setText(text);
+}
+
+int GaugeFigure::getLabelOffset() const
+{
+    return labelOffset;
+}
+
+void GaugeFigure::setLabelOffset(int offset)
+{
+    if (labelOffset != offset) {
+        labelOffset = offset;
+        labelFigure->setPosition(Point(getBounds().getCenter().x, getBounds().y + getBounds().height + labelOffset));
+    }
 }
 
 const cFigure::Font& GaugeFigure::getLabelFont() const
@@ -191,18 +194,20 @@ void GaugeFigure::parse(cProperty *property)
 {
     cGroupFigure::parse(property);
 
+    const char *s;
+
     setBounds(parseBounds(property, getBounds()));
 
     // Set default
     redrawTicks();
-
-    const char *s;
     if ((s = property->getValue(PKEY_BACKGROUND_COLOR)) != nullptr)
         setBackgroundColor(parseColor(s));
     if ((s = property->getValue(PKEY_NEEDLE_COLOR)) != nullptr)
         setNeedleColor(parseColor(s));
     if ((s = property->getValue(PKEY_LABEL)) != nullptr)
         setLabel(s);
+    if ((s = property->getValue(PKEY_LABEL_OFFSET)) != nullptr)
+        setLabelOffset(atoi(s));
     if ((s = property->getValue(PKEY_LABEL_FONT)) != nullptr)
         setLabelFont(parseFont(s));
     if ((s = property->getValue(PKEY_LABEL_COLOR)) != nullptr)
@@ -218,6 +223,7 @@ void GaugeFigure::parse(cProperty *property)
         setColorStrip(s);
     if ((s = property->getValue(PKEY_INITIAL_VALUE)) != nullptr)
         setValue(0, simTime(), utils::atod(s));
+
 }
 
 const char **GaugeFigure::getAllowedPropertyKeys() const
@@ -228,7 +234,7 @@ const char **GaugeFigure::getAllowedPropertyKeys() const
             PKEY_BACKGROUND_COLOR, PKEY_NEEDLE_COLOR, PKEY_LABEL, PKEY_LABEL_FONT,
             PKEY_LABEL_COLOR, PKEY_MIN_VALUE, PKEY_MAX_VALUE, PKEY_TICK_SIZE,
             PKEY_COLOR_STRIP, PKEY_INITIAL_VALUE, PKEY_POS, PKEY_SIZE, PKEY_ANCHOR,
-            PKEY_BOUNDS, nullptr
+            PKEY_BOUNDS, PKEY_LABEL_OFFSET, nullptr
         };
         concatArrays(keys, cGroupFigure::getAllowedPropertyKeys(), localKeys);
     }
@@ -381,10 +387,12 @@ void GaugeFigure::redrawTicks()
     numTicks = std::max(0.0, std::abs(max - min - shifting) / tickSize + 1);
 
     // Allocate ticks and numbers if needed
-    if (numTicks > tickFigures.size())
-        while (numTicks > tickFigures.size()) {
+    if ((size_t)numTicks > tickFigures.size())
+        while ((size_t)numTicks > tickFigures.size()) {
             cLineFigure *tick = new cLineFigure();
             cTextFigure *number = new cTextFigure();
+            take(tick);
+            take(number);
 
             number->setAnchor(cFigure::ANCHOR_CENTER);
 
@@ -396,8 +404,12 @@ void GaugeFigure::redrawTicks()
     for (int i = numTicks; i < prevNumTicks; ++i) {
         removeFigure(tickFigures[i]);
         removeFigure(numberFigures[i]);
+        take(tickFigures[i]);
+        take(numberFigures[i]);
     }
     for (int i = prevNumTicks; i < numTicks; ++i) {
+        drop(tickFigures[i]);
+        drop(numberFigures[i]);
         addFigure(tickFigures[i]);
         numberFigures[i]->insertBelow(needle);
     }
@@ -425,7 +437,7 @@ void GaugeFigure::redrawCurves()
     double lastStop = 0.0;
     double newStop = 0.0;
     Color color;
-    int index = 0;
+    size_t index = 0;
     const double deg270InRad = 6 * M_PI / 4;
     while (signalTokenizer.hasMoreTokens()) {
         const char *token = signalTokenizer.nextToken();
@@ -433,6 +445,7 @@ void GaugeFigure::redrawCurves()
         if (newStop > lastStop) {
             if (index == curveFigures.size()) {
                 cArcFigure *arc = new cArcFigure("colorStrip");
+                take(arc);
                 arc->setZoomLineWidth(true);
                 curveFigures.push_back(arc);
             }
@@ -448,6 +461,7 @@ void GaugeFigure::redrawCurves()
     if (lastStop < 1.0) {
         if (index == curveFigures.size()) {
             cArcFigure *arc = new cArcFigure("colorStrip");
+            take(arc);
             arc->setZoomLineWidth(true);
             curveFigures.push_back(arc);
         }
@@ -460,10 +474,13 @@ void GaugeFigure::redrawCurves()
 
     // Add or remove figures from canvas according to previous number of curves
     for (int i = prevCurvesOnCanvas; i < curvesOnCanvas; ++i) {
+        drop(curveFigures[i]);
         curveFigures[i]->insertBelow(needle);
     }
-    for (int i = curvesOnCanvas; i < prevCurvesOnCanvas; ++i)
+    for (int i = curvesOnCanvas; i < prevCurvesOnCanvas; ++i) {
         removeFigure(curveFigures[index]);
+        take(curveFigures[index]);
+    }
 }
 
 void GaugeFigure::layout()
@@ -483,7 +500,7 @@ void GaugeFigure::layout()
     valueFigure->setFont(Font("", getBounds().width * FONT_SIZE_PERCENT, 0));
     valueFigure->setPosition(Point(getBounds().getCenter().x, getBounds().y + getBounds().height * VALUE_Y_PERCENT));
 
-    labelFigure->setPosition(Point(getBounds().getCenter().x, getBounds().y + getBounds().height));
+    labelFigure->setPosition(Point(getBounds().getCenter().x, getBounds().y + getBounds().height + labelOffset));
 }
 
 void GaugeFigure::refresh()
@@ -500,5 +517,5 @@ void GaugeFigure::refresh()
     }
 }
 
-// } // namespace inet
+} // namespace inet
 

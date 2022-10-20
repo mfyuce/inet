@@ -1,57 +1,45 @@
-// Copyright (C) 2013 Andras Varga
-// 
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
-// 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU Lesser General Public License for more details.
-// 
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-// 
+//
+// Copyright (C) 2013 OpenSim Ltd.
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
 
 package inet.examples.pim.dm.assert;
 
-import inet.networklayer.configurator.ipv4.IPv4NetworkConfigurator;
+import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
 import inet.node.ethernet.Eth100M;
-import inet.node.ethernet.EtherSwitch;
+import inet.node.ethernet.EthernetSwitch;
 import inet.node.inet.MulticastRouter;
 import inet.node.inet.StandardHost;
 
 
 network Network
 {
-    @display("bgb=448,352,white");
-
     submodules:
         R1: MulticastRouter {
-            @display("p=208,102");
+            @display("p=400,200");
         }
         R2: MulticastRouter {
-            @display("p=143,163");
+            @display("p=550,100");
         }
         R3: MulticastRouter {
-            @display("p=276,163");
+            @display("p=550,300");
         }
 
         Source: StandardHost {
-            @display("p=208,33");
+            @display("p=250,200");
         }
-        configurator: IPv4NetworkConfigurator {
-            @display("p=44,41");
+        configurator: Ipv4NetworkConfigurator {
+            @display("p=100,100;is=s");
         }
         R4: MulticastRouter {
-            @display("p=208,300");
+            @display("p=850,199");
         }
         Receiver: StandardHost {
-            @display("p=301,300");
+            @display("p=1000,199");
         }
-        switch: EtherSwitch {
-            @display("p=208,221");
+        switch: EthernetSwitch {
+            @display("p=700,199");
         }
     connections allowunconnected:
         R1.ethg++ <--> Eth100M <--> R2.ethg++;

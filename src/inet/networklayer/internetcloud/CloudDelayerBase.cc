@@ -1,25 +1,14 @@
 //
-// Copyright (C) 2012 OpenSim Ltd
+// Copyright (C) 2012 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
-// @author Zoltan Bojthe
-//
+
 
 #include "inet/networklayer/internetcloud/CloudDelayerBase.h"
 
-#include "inet/networklayer/ipv4/IPv4.h"
+#include "inet/linklayer/common/InterfaceTag_m.h"
+#include "inet/networklayer/ipv4/Ipv4.h"
 
 namespace inet {
 
@@ -29,41 +18,39 @@ Define_Module(CloudDelayerBase);
 
 CloudDelayerBase::CloudDelayerBase()
 {
-    ipv4Layer = nullptr;
 }
 
 CloudDelayerBase::~CloudDelayerBase()
 {
-    //TODO unregister hook if ipv4Layer exists
-    ipv4Layer = check_and_cast_nullable<IPv4 *>(getModuleByPath("^.ip"));
-    if (ipv4Layer)
-        ipv4Layer->unregisterHook(0, this);
 }
 
 void CloudDelayerBase::initialize(int stage)
 {
     cSimpleModule::initialize(stage);
 
-    if (stage == INITSTAGE_NETWORK_LAYER) {
-        ipv4Layer = check_and_cast<IPv4 *>(getModuleByPath("^.ip"));
-        ipv4Layer->registerHook(0, this);
+    if (stage == INITSTAGE_LOCAL) {
+        networkProtocol.reference(this, "networkProtocolModule", true);
+    }
+    else if (stage == INITSTAGE_NETWORK_LAYER) {
+        networkProtocol->registerHook(0, this);
     }
 }
 
 void CloudDelayerBase::finish()
 {
-    if (ipv4Layer)
-        ipv4Layer->unregisterHook(0, this);
-    ipv4Layer = nullptr;
+    if (isRegisteredHook(networkProtocol.get()))
+        networkProtocol->unregisterHook(this);
 }
 
 void CloudDelayerBase::handleMessage(cMessage *msg)
 {
     if (msg->isSelfMessage()) {
-        INetworkDatagram *context = (INetworkDatagram *)msg->getContextPointer();
+        Packet *context = (Packet *)msg->getContextPointer();
         delete msg;
-        ipv4Layer->reinjectQueuedDatagram(context);
+        networkProtocol->reinjectQueuedDatagram(context);
     }
+    else
+        throw cRuntimeError("This module does not handle incoming messages");
 }
 
 void CloudDelayerBase::calculateDropAndDelay(const cMessage *msg, int srcID, int destID, bool& outDrop, simtime_t& outDelay)
@@ -72,50 +59,50 @@ void CloudDelayerBase::calculateDropAndDelay(const cMessage *msg, int srcID, int
     outDelay = SIMTIME_ZERO;
 }
 
-INetfilter::IHook::Result CloudDelayerBase::datagramPreRoutingHook(INetworkDatagram *datagram, const InterfaceEntry *inputInterfaceEntry, const InterfaceEntry *& outputInterfaceEntry, L3Address& nextHopAddress)
+INetfilter::IHook::Result CloudDelayerBase::datagramPreRoutingHook(Packet *datagram)
 {
     return INetfilter::IHook::ACCEPT;
 }
 
-INetfilter::IHook::Result CloudDelayerBase::datagramForwardHook(INetworkDatagram *datagram, const InterfaceEntry *inputInterfaceEntry, const InterfaceEntry *& outputInterfaceEntry, L3Address& nextHopAddress)
+INetfilter::IHook::Result CloudDelayerBase::datagramForwardHook(Packet *datagram)
 {
-    Enter_Method_Silent();
+    Enter_Method("datagramForwardHook");
 
-    int srcID = inputInterfaceEntry ? inputInterfaceEntry->getInterfaceId() : -1;
-    int destID = outputInterfaceEntry->getInterfaceId();
+    auto ifInd = datagram->getTag<InterfaceInd>();
+    int srcID = ifInd ? ifInd->getInterfaceId() : -1;
+    int destID = datagram->getTag<InterfaceReq>()->getInterfaceId();
 
-    cMessage *msg = check_and_cast<cMessage *>(datagram);
     simtime_t propDelay;
     bool isDrop;
-    calculateDropAndDelay(msg, srcID, destID, isDrop, propDelay);
+    calculateDropAndDelay(datagram, srcID, destID, isDrop, propDelay);
     if (isDrop) {
-        //TODO emit?
-        EV_INFO << "Message " << msg->str() << " dropped in cloud.\n";
+        // TODO emit?
+        EV_INFO << "Message " << datagram->str() << " dropped in cloud.\n";
         return INetfilter::IHook::DROP;
     }
 
     if (propDelay > SIMTIME_ZERO) {
-        //TODO emit?
-        EV_INFO << "Message " << msg->str() << " delayed with " << propDelay * 1000.0 << "ms in cloud.\n";
+        // TODO emit?
+        EV_INFO << "Message " << datagram->str() << " delayed with " << propDelay * 1000.0 << "ms in cloud.\n";
         cMessage *selfmsg = new cMessage("Delay");
-        selfmsg->setContextPointer(datagram);
-        scheduleAt(simTime() + propDelay, selfmsg);
+        selfmsg->setContextPointer(datagram); // datagram owned by INetfilter module (Ipv4, Ipv6, ...)
+        scheduleAfter(propDelay, selfmsg);
         return INetfilter::IHook::QUEUE;
     }
     return INetfilter::IHook::ACCEPT;
 }
 
-INetfilter::IHook::Result CloudDelayerBase::datagramPostRoutingHook(INetworkDatagram *datagram, const InterfaceEntry *inputInterfaceEntry, const InterfaceEntry *& outputInterfaceEntry, L3Address& nextHopAddress)
+INetfilter::IHook::Result CloudDelayerBase::datagramPostRoutingHook(Packet *datagram)
 {
     return INetfilter::IHook::ACCEPT;
 }
 
-INetfilter::IHook::Result CloudDelayerBase::datagramLocalInHook(INetworkDatagram *datagram, const InterfaceEntry *inputInterfaceEntry)
+INetfilter::IHook::Result CloudDelayerBase::datagramLocalInHook(Packet *datagram)
 {
     return INetfilter::IHook::ACCEPT;
 }
 
-INetfilter::IHook::Result CloudDelayerBase::datagramLocalOutHook(INetworkDatagram *datagram, const InterfaceEntry *& outputInterfaceEntry, L3Address& nextHopAddress)
+INetfilter::IHook::Result CloudDelayerBase::datagramLocalOutHook(Packet *datagram)
 {
     return INetfilter::IHook::ACCEPT;
 }

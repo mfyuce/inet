@@ -22,14 +22,18 @@
 #ifndef __INET_UNITS_H
 #define __INET_UNITS_H
 
+#include <assert.h>
+
 #include <cmath>
 #include <iostream>
+
+#include "inet/common/INETMath.h" // M_PI
 
 namespace inet {
 
 namespace units {
 
-namespace internal    // Boost would call this "detail"
+namespace internal // Boost would call this "detail"
 {
 // Forward
 template<typename T1, typename T2> struct convert;
@@ -51,6 +55,14 @@ struct compose;
 template<typename Unit, int Num, int Den = 1>
 struct scale;
 
+// Constructs a unit equivalent to F(Unit)
+template<typename Unit, double F()>
+struct fscale;
+
+// Constructs a unit equivalent to Unit*Num/Den
+template<typename Unit, int Num, int Den = 1>
+struct intscale;
+
 // Constructs a unit equivalent to Unit+Num/Den
 template<typename Unit, int Num, int Den = 1>
 struct translate;
@@ -63,8 +75,8 @@ struct pow;
 typedef pow<internal::none, 0> unit;
 
 // A value with a unit.
-//      Value is the type you are storing
-//    Units is the units of the value
+// Value is the type you are storing
+// Units is the units of the value
 template<typename Value, typename Units>
 class value
 {
@@ -86,9 +98,21 @@ class value
     {
     }
 
+    std::string str() const
+    {
+        std::stringstream ss;
+        ss << *this;
+        return ss.str();
+    }
+
     const value_type& get() const
     {
         return m_rep;
+    }
+
+    void set(const value_type& v)
+    {
+        m_rep = v;
     }
 
     template<typename OtherValue, typename OtherUnits>
@@ -98,10 +122,10 @@ class value
         return *this;
     }
 
-    template<typename OtherValue, typename OtherUnits>
-    value operator+(const value<OtherValue, OtherUnits>& other) const
+    template<typename OtherValue, typename OtherUnits, typename ResultValue = typename std::remove_cv<decltype(Value() + OtherValue())>::type>
+    value<ResultValue, Units> operator+(const value<OtherValue, OtherUnits>& other) const
     {
-        return value(get() + value(other).get());
+        return value<ResultValue, Units>(get() + value<OtherValue, Units>(other).get());
     }
 
     template<typename OtherValue, typename OtherUnits>
@@ -118,10 +142,10 @@ class value
         return *this;
     }
 
-    template<typename OtherValue, typename OtherUnits>
-    value operator-(const value<OtherValue, OtherUnits>& other) const
+    template<typename OtherValue, typename OtherUnits, typename ResultValue = typename std::remove_cv<decltype(Value() - OtherValue())>::type>
+    value<ResultValue, Units> operator-(const value<OtherValue, OtherUnits>& other) const
     {
-        return value(get() - value(other).get());
+        return value<ResultValue, Units>(get() - value<OtherValue, Units>(other).get());
     }
 
     value operator-() const
@@ -129,14 +153,15 @@ class value
         return value(-get());
     }
 
-    template<typename OtherValue, typename OtherUnits>
-    value<Value, compose<Units, OtherUnits> >
+    template<typename OtherValue, typename OtherUnits, typename ResultValue = typename std::remove_cv<decltype(Value() * OtherValue())>::type>
+    value<ResultValue, compose<Units, OtherUnits>>
     operator*(const value<OtherValue, OtherUnits>& other) const
     {
-        return value<Value, compose<Units, OtherUnits> >(get() * other.get());
+        return value<ResultValue, compose<Units, OtherUnits>>(get() * other.get());
     }
 
-    value operator*(const value_type& v) const
+    template<typename OtherValue>
+    value operator*(OtherValue v) const
     {
         return value(get() * v);
     }
@@ -147,11 +172,11 @@ class value
         return *this;
     }
 
-    template<typename OtherValue, typename OtherUnits>
-    value<Value, compose<Units, pow<OtherUnits, -1> > >
+    template<typename OtherValue, typename OtherUnits, typename ResultValue = typename std::remove_cv<decltype(Value() / OtherValue())>::type>
+    value<ResultValue, compose<Units, pow<OtherUnits, -1>>>
     operator/(const value<OtherValue, OtherUnits>& other) const
     {
-        return value<Value, compose<Units, pow<OtherUnits, -1> > >(get() / other.get());
+        return value<ResultValue, compose<Units, pow<OtherUnits, -1>>>(get() / other.get());
     }
 
     value operator/(const value_type& v) const
@@ -232,9 +257,9 @@ class value
 };
 
 template<typename Value, typename Unit>
-value<Value, pow<Unit, -1> > operator/(const Value& a, const value<Value, Unit>& b)
+value<Value, pow<Unit, -1>> operator/(const Value& a, const value<Value, Unit>& b)
 {
-    return value<Value, pow<Unit, -1> >(a / b.get());
+    return value<Value, pow<Unit, -1>>(a / b.get());
 }
 
 template<typename Value, typename Unit>
@@ -244,15 +269,29 @@ value<Value, Unit> operator*(const Value& a, const value<Value, Unit>& b)
 }
 
 template<typename Value, typename Unit>
-value<Value, pow<Unit, 1, 2> > sqrt(const value<Value, Unit>& a)
+value<Value, pow<Unit, 1, 2>> sqrt(const value<Value, Unit>& a)
 {
-    return value<Value, pow<Unit, 1, 2> >(std::sqrt(a.get()));
+    return value<Value, pow<Unit, 1, 2>>(std::sqrt(a.get()));
 }
 
 template<int Num, int Den, typename Value, typename Unit>
-value<Value, pow<Unit, Num, Den> > raise(const value<Value, Unit>& a)
+value<Value, pow<Unit, Num, Den>> raise(const value<Value, Unit>& a)
 {
-    return value<Value, pow<Unit, Num, Den> >(internal::fixed_power<Num, Den>::pow(a.get()));
+    return value<Value, pow<Unit, Num, Den>>(internal::fixed_power<Num, Den>::pow(a.get()));
+}
+
+template<typename Value, typename Units>
+inline void doParsimPacking(cCommBuffer *buffer, const value<Value, Units>& a)
+{
+    buffer->pack(a.get());
+}
+
+template<typename Value, typename Units>
+inline void doParsimUnpacking(cCommBuffer *buffer, value<Value, Units>& a)
+{
+    Value v;
+    buffer->unpack(v);
+    a.set(v);
 }
 
 } // namespace units
@@ -352,12 +391,64 @@ struct convert2<scale<T, Num, Den>, U>
 
 // Convert to a scaled unit
 template<typename T, typename U, int Num, int Den>
-struct convert3<T, scale<U, Num, Den> >
+struct convert3<T, scale<U, Num, Den>>
 {
     template<typename V>
     static V fn(const V& v)
     {
         return (convert<T, U>::fn(v) * Num) / Den;
+    }
+};
+
+// Convert from a scaled unit
+template<typename T, typename U, double F()>
+struct convert2<fscale<T, F>, U>
+{
+    template<typename V>
+    static V fn(const V& v)
+    {
+        auto t = v / F();
+        return convert<T, U>::fn(t);
+    }
+};
+
+// Convert to a scaled unit
+template<typename T, typename U, double F()>
+struct convert3<T, fscale<U, F>>
+{
+    template<typename V>
+    static V fn(const V& v)
+    {
+        auto t = convert<T, U>::fn(v);
+        return t * F();
+    }
+};
+
+// Convert from a scaled unit
+template<typename T, typename U, int Num, int Den>
+struct convert2<intscale<T, Num, Den>, U>
+{
+    template<typename V>
+    static V fn(const V& v)
+    {
+        auto t = v * Den;
+        if (t % Num != 0)
+            throw cRuntimeError("Cannot convert between integer units");
+        return convert<T, U>::fn(t / Num);
+    }
+};
+
+// Convert to a scaled unit
+template<typename T, typename U, int Num, int Den>
+struct convert3<T, intscale<U, Num, Den>>
+{
+    template<typename V>
+    static V fn(const V& v)
+    {
+        auto t = convert<T, U>::fn(v) * Num;
+        if (t % Den != 0)
+            throw cRuntimeError("Cannot convert between integer units");
+        return t / Den;
     }
 };
 
@@ -374,7 +465,7 @@ struct convert2<translate<T, Num, Den>, U>
 
 // Convert to a translated unit
 template<typename T, typename U, int Num, int Den>
-struct convert3<T, translate<U, Num, Den> >
+struct convert3<T, translate<U, Num, Den>>
 {
     template<typename V>
     static V fn(const V& v)
@@ -402,7 +493,24 @@ struct count_terms<Term, Term>
 
 // count_terms ignores scaling factors - that is taken care of by scaling_factor.
 template<typename Term, typename Unit, int N, int D>
-struct count_terms<Term, scale<Unit, N, D> >
+struct count_terms<Term, scale<Unit, N, D>>
+{
+    typedef count_terms<Term, Unit> result;
+    static const int num = result::num;
+    static const int den = result::den;
+};
+
+template<typename Term, typename Unit, double F()>
+struct count_terms<Term, fscale<Unit, F>>
+{
+    typedef count_terms<Term, Unit> result;
+    static const int num = result::num;
+    static const int den = result::den;
+};
+
+// count_terms ignores scaling factors - that is taken care of by scaling_factor.
+template<typename Term, typename Unit, int N, int D>
+struct count_terms<Term, intscale<Unit, N, D>>
 {
     typedef count_terms<Term, Unit> result;
     static const int num = result::num;
@@ -411,7 +519,7 @@ struct count_terms<Term, scale<Unit, N, D> >
 
 // count_terms ignores translation.
 template<typename Term, typename Unit, int N, int D>
-struct count_terms<Term, translate<Unit, N, D> >
+struct count_terms<Term, translate<Unit, N, D>>
 {
     typedef count_terms<Term, Unit> result;
     static const int num = result::num;
@@ -420,7 +528,7 @@ struct count_terms<Term, translate<Unit, N, D> >
 
 // Addition of fractions.
 template<typename Term, typename T1, typename T2>
-struct count_terms<Term, compose<T1, T2> >
+struct count_terms<Term, compose<T1, T2>>
 {
     typedef count_terms<Term, T1> result1;
     typedef count_terms<Term, T2> result2;
@@ -432,7 +540,7 @@ struct count_terms<Term, compose<T1, T2> >
 
 // Multiplication of fractions.
 template<typename Term, typename Unit, int N, int D>
-struct count_terms<Term, pow<Unit, N, D> >
+struct count_terms<Term, pow<Unit, N, D>>
 {
     typedef count_terms<Term, Unit> result;
     static const int num = N * result::num;
@@ -462,6 +570,18 @@ struct check_terms_equal<pow<Unit, N, D>, T1, T2>
 
 template<typename Unit, int N, int D, typename T1, typename T2>
 struct check_terms_equal<scale<Unit, N, D>, T1, T2>
+{
+    static const bool value = check_terms_equal<Unit, T1, T2>::value;
+};
+
+template<typename Unit, double F(), typename T1, typename T2>
+struct check_terms_equal<fscale<Unit, F>, T1, T2>
+{
+    static const bool value = check_terms_equal<Unit, T1, T2>::value;
+};
+
+template<typename Unit, int N, int D, typename T1, typename T2>
+struct check_terms_equal<intscale<Unit, N, D>, T1, T2>
 {
     static const bool value = check_terms_equal<Unit, T1, T2>::value;
 };
@@ -576,7 +696,7 @@ struct scaling_factor
 };
 
 template<typename U1, typename U2>
-struct scaling_factor<compose<U1, U2> >
+struct scaling_factor<compose<U1, U2>>
 {
     template<typename T>
     static T fn()
@@ -587,7 +707,7 @@ struct scaling_factor<compose<U1, U2> >
 };
 
 template<typename U, int N, int D>
-struct scaling_factor<scale<U, N, D> >
+struct scaling_factor<scale<U, N, D>>
 {
     template<typename T>
     static T fn()
@@ -597,8 +717,31 @@ struct scaling_factor<scale<U, N, D> >
     }
 };
 
+template<typename U, double F()>
+struct scaling_factor<fscale<U, F>>
+{
+    template<typename T>
+    static T fn()
+    {
+        return scaling_factor<U>::template fn<T>() * F();
+    }
+};
+
 template<typename U, int N, int D>
-struct scaling_factor<pow<U, N, D> >
+struct scaling_factor<intscale<U, N, D>>
+{
+    template<typename T>
+    static T fn()
+    {
+        auto t = scaling_factor<U>::template fn<T>() * static_cast<T>(N);
+        if (t % static_cast<T>(D) != 0)
+            throw cRuntimeError("Cannot convert between integer units");
+        return t / static_cast<T>(D);
+    }
+};
+
+template<typename U, int N, int D>
+struct scaling_factor<pow<U, N, D>>
 {
     template<typename T>
     static T fn()
@@ -608,7 +751,7 @@ struct scaling_factor<pow<U, N, D> >
 };
 
 template<typename U, int N, int D>
-struct scaling_factor<translate<U, N, D> >
+struct scaling_factor<translate<U, N, D>>
 {
     template<typename T>
     static T fn()
@@ -659,7 +802,7 @@ UNIT_DISPLAY_NAME(unit, "1");
 namespace internal {
 
 template<typename U1, typename U2>
-struct output_unit2<compose<U1, U2> >
+struct output_unit2<compose<U1, U2>>
 {
     template<typename Stream>
     static void fn(Stream& os)
@@ -671,7 +814,7 @@ struct output_unit2<compose<U1, U2> >
 };
 
 template<typename Unit, int Num, int Den>
-struct output_unit2<pow<Unit, Num, Den> >
+struct output_unit2<pow<Unit, Num, Den>>
 {
     template<typename Stream>
     static void fn(Stream& os)
@@ -689,7 +832,7 @@ struct output_unit2<pow<Unit, Num, Den> >
 };
 
 template<typename Unit, int Num, int Den>
-struct output_unit2<translate<Unit, Num, Den> >
+struct output_unit2<translate<Unit, Num, Den>>
 {
     template<typename Stream>
     static void fn(Stream& os)
@@ -703,7 +846,32 @@ struct output_unit2<translate<Unit, Num, Den> >
 };
 
 template<typename Unit, int Num, int Den>
-struct output_unit2<scale<Unit, Num, Den> >
+struct output_unit2<scale<Unit, Num, Den>>
+{
+    template<typename Stream>
+    static void fn(Stream& os)
+    {
+        os << Den;
+        if (Num != 1)
+            os << '/' << Num;
+        os << '.';
+        output_unit<Unit>::fn(os);
+    }
+};
+
+template<typename Unit, double F()>
+struct output_unit2<fscale<Unit, F>>
+{
+    template<typename Stream>
+    static void fn(Stream& os)
+    {
+        os << F() << '.';
+        output_unit<Unit>::fn(os);
+    }
+};
+
+template<typename Unit, int Num, int Den>
+struct output_unit2<intscale<Unit, Num, Den>>
 {
     template<typename Stream>
     static void fn(Stream& os)
@@ -739,14 +907,15 @@ typedef ::inet::units::unit unit;
 
 // SI base units:
 
-struct m;    // meter
-struct kg;    // kilogram
-struct s;    // second
-struct K;    // Kelvin
-struct A;    // Ampere
-struct mol;    // mole
-struct cd;    // candela
-struct b;    // bit
+struct m; // meter
+struct kg; // kilogram
+struct s; // second
+struct K; // Kelvin
+struct A; // Ampere
+struct mol; // mole
+struct cd; // candela
+struct b; // bit
+struct rad; // rad;
 
 } // namespace units
 
@@ -757,31 +926,34 @@ UNIT_DISPLAY_NAME(units::K, "K");
 UNIT_DISPLAY_NAME(units::A, "A");
 UNIT_DISPLAY_NAME(units::mol, "mol");
 UNIT_DISPLAY_NAME(units::cd, "cd");
+UNIT_DISPLAY_NAME(units::b, "b");
 
 namespace units {
 
 // SI derived units:
-typedef compose<m, pow<m, -1> > rad;
-typedef compose<pow<m, 2>, pow<m, -2> > sr;
+typedef compose<pow<m, 2>, pow<m, -2>> sr;
 typedef pow<s, -1> Hz;
-typedef compose<m, compose<kg, pow<s, -2> > > N;
-typedef compose<N, pow<m, -2> > Pa;
+typedef compose<m, compose<kg, pow<s, -2>>> N;
+typedef compose<N, pow<m, -2>> Pa;
 typedef compose<N, m> J;
-typedef compose<J, pow<s, -1> > W;
+typedef compose<J, pow<s, -1>> W;
+typedef compose<W, pow<Hz, -1>> WpHz;
 typedef compose<s, A> C;
-typedef compose<W, pow<A, -1> > V;
-typedef compose<C, pow<V, -1> > F;
-typedef compose<V, pow<A, -1> > Ohm;
+typedef compose<W, pow<A, -1>> V;
+typedef compose<C, pow<V, -1>> F;
+typedef compose<V, pow<A, -1>> Ohm;
 typedef compose<Ohm, m> Ohmm;
-typedef compose<A, pow<V, -1> > S;
-typedef compose<S, pow<m, -1> > Spm;
+typedef compose<A, s> As;
+typedef compose<A, scale<s, 1, 3600>> Ah;
+typedef compose<A, pow<V, -1>> S;
+typedef compose<S, pow<m, -1>> Spm;
 typedef compose<V, s> Wb;
-typedef compose<Wb, pow<m, -2> > T;
-typedef compose<Wb, pow<A, -1> > H;
+typedef compose<Wb, pow<m, -2>> T;
+typedef compose<Wb, pow<A, -1>> H;
 typedef cd lm;
-typedef compose<lm, pow<m, -2> > lx;
+typedef compose<lm, pow<m, -2>> lx;
 typedef pow<s, -1> Bq;
-typedef compose<J, pow<kg, -1> > Gy;
+typedef compose<J, pow<kg, -1>> Gy;
 typedef Gy Sv;
 typedef compose<pow<s, -1>, mol> kat;
 
@@ -789,11 +961,12 @@ typedef compose<pow<s, -1>, mol> kat;
 
 UNIT_DISPLAY_NAME(units::rad, "rad");
 UNIT_DISPLAY_NAME(units::sr, "sr");
-UNIT_DISPLAY_NAME(units::Hz, "Hz");    // Too problematic
+UNIT_DISPLAY_NAME(units::Hz, "Hz"); // Too problematic
 UNIT_DISPLAY_NAME(units::N, "N");
 UNIT_DISPLAY_NAME(units::Pa, "Pa");
 UNIT_DISPLAY_NAME(units::J, "J");
 UNIT_DISPLAY_NAME(units::W, "W");
+UNIT_DISPLAY_NAME(units::WpHz, "WpHz");
 UNIT_DISPLAY_NAME(units::C, "C");
 UNIT_DISPLAY_NAME(units::V, "V");
 UNIT_DISPLAY_NAME(units::F, "F");
@@ -897,8 +1070,15 @@ typedef milli<m>::type mm;
 typedef kilo<m>::type km;
 typedef milli<kg>::type g;
 typedef milli<g>::type mg;
+typedef pico<s>::type ps;
+typedef nano<s>::type ns;
+typedef micro<s>::type us;
 typedef milli<s>::type ms;
+typedef pico<W>::type pW;
+typedef nano<W>::type nW;
+typedef micro<W>::type uW;
 typedef milli<W>::type mW;
+typedef milli<Ah>::type mAh;
 typedef kilo<Hz>::type kHz;
 typedef mega<Hz>::type MHz;
 typedef giga<Hz>::type GHz;
@@ -910,7 +1090,13 @@ UNIT_DISPLAY_NAME(units::mm, "mm");
 UNIT_DISPLAY_NAME(units::km, "km");
 UNIT_DISPLAY_NAME(units::g, "g");
 UNIT_DISPLAY_NAME(units::mg, "mg");
+UNIT_DISPLAY_NAME(units::ps, "ps");
+UNIT_DISPLAY_NAME(units::ns, "ns");
+UNIT_DISPLAY_NAME(units::us, "us");
 UNIT_DISPLAY_NAME(units::ms, "ms");
+UNIT_DISPLAY_NAME(units::pW, "pW");
+UNIT_DISPLAY_NAME(units::nW, "nW");
+UNIT_DISPLAY_NAME(units::uW, "uW");
 UNIT_DISPLAY_NAME(units::mW, "mW");
 UNIT_DISPLAY_NAME(units::kHz, "kHz");
 UNIT_DISPLAY_NAME(units::MHz, "MHz");
@@ -932,7 +1118,7 @@ typedef scale<s, 1, 60> minute;
 typedef scale<minute, 1, 60> hour;
 typedef scale<hour, 1, 24> day;
 typedef scale<day, 1, 7> week;
-struct month;    // No fixed ratio with week
+struct month; // No fixed ratio with week
 typedef scale<month, 1, 12> year;
 typedef scale<year, 1, 100> century;
 typedef scale<year, 1, 1000> millennium;
@@ -960,18 +1146,18 @@ typedef scale<liter, 100> cl;
 typedef pow<m, 3> m3;
 
 // Non-SI velocity
-typedef compose<mile, pow<hour, -1> > mph;
-typedef compose<km, pow<hour, -1> > kph;
-typedef compose<m, pow<s, -1> > mps;
-typedef compose<s, pow<m, -1> > spm;
-typedef compose<nautical_mile, pow<hour, -1> > knot;
+typedef compose<mile, pow<hour, -1>> mph;
+typedef compose<km, pow<hour, -1>> kph;
+typedef compose<m, pow<s, -1>> mps;
+typedef compose<s, pow<m, -1>> spm;
+typedef compose<nautical_mile, pow<hour, -1>> knot;
 typedef scale<mps, 100, 34029> mach;
 
 // Angles
-typedef scale<rad, 180000000, 3141593> degree;
-typedef scale<rad, 200000000, 3141593> grad;
-typedef scale<degree, 60> degree_minute;
-typedef scale<degree_minute, 60> degree_second;
+constexpr inline double rad2degScale() { return 180 / M_PI; }
+typedef fscale<rad, rad2degScale> deg;
+typedef scale<deg, 60> deg_min;
+typedef scale<deg_min, 60> deg_sec;
 
 // Pressure
 typedef scale<Pa, 1, 1000> kPa;
@@ -979,9 +1165,11 @@ typedef scale<kPa, 1450377, 10000000> psi;
 typedef scale<kPa, 10> millibar;
 
 // Informatics
-typedef compose<b, pow<s, -1> > bps;
-typedef scale<bps, 1, 1000> kbps;
-typedef scale<bps, 1, 1000000> Mbps;
+typedef intscale<b, 1, 8> B;
+typedef compose<b, pow<s, -1>> bps;
+typedef kilo<bps>::type kbps;
+typedef mega<bps>::type Mbps;
+typedef giga<bps>::type Gbps;
 
 // Other
 typedef scale<Hz, 60> rpm;
@@ -1021,16 +1209,17 @@ UNIT_DISPLAY_NAME(units::mps, "mps");
 UNIT_DISPLAY_NAME(units::kph, "km/h");
 UNIT_DISPLAY_NAME(units::knot, "knots");
 UNIT_DISPLAY_NAME(units::mach, "mach");
-UNIT_DISPLAY_NAME(units::degree, "deg");
-UNIT_DISPLAY_NAME(units::grad, "grad");
-UNIT_DISPLAY_NAME(units::degree_minute, "'");
-UNIT_DISPLAY_NAME(units::degree_second, "\"");
+UNIT_DISPLAY_NAME(units::deg, "deg");
+UNIT_DISPLAY_NAME(units::deg_min, "'");
+UNIT_DISPLAY_NAME(units::deg_sec, "\"");
 UNIT_DISPLAY_NAME(units::kPa, "kPa");
 UNIT_DISPLAY_NAME(units::psi, "PSI");
 UNIT_DISPLAY_NAME(units::millibar, "millibars");
+UNIT_DISPLAY_NAME(units::B, "B");
 UNIT_DISPLAY_NAME(units::bps, "bps");
 UNIT_DISPLAY_NAME(units::kbps, "kbps");
 UNIT_DISPLAY_NAME(units::Mbps, "Mbps");
+UNIT_DISPLAY_NAME(units::Gbps, "Gbps");
 UNIT_DISPLAY_NAME(units::percent, "%");
 UNIT_DISPLAY_NAME(units::rpm, "rpm");
 UNIT_DISPLAY_NAME(units::dozen, "dozen");
@@ -1044,11 +1233,13 @@ typedef value<double, units::unit> unit;
 typedef value<double, units::m> m;
 typedef value<double, units::kg> kg;
 typedef value<double, units::s> s;
+typedef value<simtime_t, units::s> simsec;
 typedef value<double, units::K> K;
 typedef value<double, units::A> A;
 typedef value<double, units::mol> mol;
 typedef value<double, units::cd> cd;
-typedef value<double, units::m> b;
+typedef value<int64_t, units::b> b;
+typedef value<int64_t, units::B> B;
 
 // SI derived
 typedef value<double, units::rad> rad;
@@ -1058,11 +1249,14 @@ typedef value<double, units::N> N;
 typedef value<double, units::Pa> Pa;
 typedef value<double, units::J> J;
 typedef value<double, units::W> W;
+typedef value<double, units::WpHz> WpHz;
 typedef value<double, units::C> C;
 typedef value<double, units::V> V;
 typedef value<double, units::F> F;
 typedef value<double, units::Ohm> Ohm;
 typedef value<double, units::Ohmm> Ohmm;
+typedef value<double, units::As> As;
+typedef value<double, units::Ah> Ah;
 typedef value<double, units::S> S;
 typedef value<double, units::S> Spm;
 typedef value<double, units::Wb> Wb;
@@ -1082,10 +1276,22 @@ typedef value<double, units::km> km;
 typedef value<double, units::g> g;
 typedef value<double, units::mg> mg;
 typedef value<double, units::ms> ms;
+typedef value<double, units::pW> pW;
+typedef value<double, units::nW> nW;
+typedef value<double, units::uW> uW;
 typedef value<double, units::mW> mW;
+typedef value<double, units::mAh> mAh;
 typedef value<double, units::kHz> kHz;
 typedef value<double, units::MHz> MHz;
 typedef value<double, units::GHz> GHz;
+typedef value<double, units::ps> ps;
+typedef value<double, units::ns> ns;
+typedef value<double, units::us> us;
+typedef value<double, units::ms> ms;
+typedef value<simtime_t, units::ps> psimsec;
+typedef value<simtime_t, units::ns> nsimsec;
+typedef value<simtime_t, units::us> usimsec;
+typedef value<simtime_t, units::ms> msimsec;
 
 // Non-SI
 typedef value<double, units::lb> lb;
@@ -1130,10 +1336,9 @@ typedef value<double, units::spm> spm;
 typedef value<double, units::knot> knot;
 typedef value<double, units::mach> mach;
 
-typedef value<double, units::degree> degree;
-typedef value<double, units::grad> grad;
-typedef value<double, units::degree_minute> degree_minute;
-typedef value<double, units::degree_second> degree_second;
+typedef value<double, units::deg> deg;
+typedef value<double, units::deg_min> deg_min;
+typedef value<double, units::deg_sec> deg_sec;
 
 typedef value<double, units::kPa> kPa;
 typedef value<double, units::psi> psi;
@@ -1142,44 +1347,168 @@ typedef value<double, units::millibar> millibar;
 typedef value<double, units::bps> bps;
 typedef value<double, units::kbps> kbps;
 typedef value<double, units::Mbps> Mbps;
+typedef value<double, units::Gbps> Gbps;
 
 typedef value<double, units::percent> percent;
 typedef value<double, units::rpm> rpm;
 typedef value<double, units::dozen> dozen;
 typedef value<double, units::bakers_dozen> bakers_dozen;
 
+template<typename Value, typename Unit>
+std::string unit2string(const value<Value, Unit>& value) {
+    std::stringstream ss;
+    ss << value;
+    return ss.str();
+}
+
 } // namespace values
+
+template<typename Value>
+std::ostream& operator<<(std::ostream& os, const value<Value, units::b>& value)
+{
+    if (value.get() % 8 == 0)
+        os << values::B(value);
+    else {
+        os << value.get() << ' ';
+        output_unit<units::b>::fn(os);
+    }
+    return os;
+}
+
+// TODO extract these SI prefix printing fallback mechanisms
+template<typename Value>
+std::ostream& operator<<(std::ostream& os, const value<Value, units::W>& value)
+{
+    if (value == values::W(0))
+        os << "0 W";
+    else if (value > values::pW(-1000.0) && value < values::pW(1000.0))
+        os << values::pW(value);
+    else if (value > values::nW(-1000.0) && value < values::nW(1000.0))
+        os << values::nW(value);
+    else if (value > values::uW(-1000.0) && value < values::uW(1000.0))
+        os << values::uW(value);
+    else if (value > values::mW(-1000.0) && value < values::mW(1000.0))
+        os << values::mW(value);
+    else {
+        os << value.get() << ' ';
+        output_unit<units::W>::fn(os);
+    }
+    return os;
+}
+
+// TODO extract these SI prefix printing fallback mechanisms
+template<typename Value>
+std::ostream& operator<<(std::ostream& os, const value<Value, units::Hz>& value)
+{
+    if (value >= values::GHz(1.0))
+        os << values::GHz(value);
+    else if (value >= values::MHz(1.0))
+        os << values::MHz(value);
+    else if (value >= values::kHz(1.0))
+        os << values::kHz(value);
+    else {
+        os << value.get() << ' ';
+        output_unit<units::Hz>::fn(os);
+    }
+    return os;
+}
+
+// TODO extract these SI prefix printing fallback mechanisms
+template<typename Value>
+std::ostream& operator<<(std::ostream& os, const value<Value, units::bps>& value)
+{
+    if (value >= values::Gbps(1.0))
+        os << values::Gbps(value);
+    else if (value >= values::Mbps(1.0))
+        os << values::Mbps(value);
+    else if (value >= values::kbps(1.0))
+        os << values::kbps(value);
+    else {
+        os << value.get() << ' ';
+        output_unit<units::bps>::fn(os);
+    }
+    return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const value<double, units::s>& value)
+{
+    if (value == values::s(0))
+        os << "0 s";
+    else if (value.get() == INFINITY)
+        os << "inf s";
+    else if (value.get() == -INFINITY)
+        os << "-inf s";
+    else if (value > values::ps(-1000.0) && value < values::ps(1000.0))
+        os << values::ps(value);
+    else if (value > values::ns(-1000.0) && value < values::ns(1000.0))
+        os << values::ns(value);
+    else if (value > values::us(-1000.0) && value < values::us(1000.0))
+        os << values::us(value);
+    else if (value > values::ms(-1000.0) && value < values::ms(1000.0))
+        os << values::ms(value);
+    else {
+        os << value.get() << ' ';
+        output_unit<units::s>::fn(os);
+    }
+    return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const value<simtime_t, units::s>& value)
+{
+    // KLUDGE there's no direct infinity support in simtime_t
+    static auto positiveInfinity = SimTime::getMaxTime() / 2;
+    static auto negativeInfinity = -SimTime::getMaxTime() / 2;
+    if (value == values::s(0))
+        os << "0 s";
+    else if (value.get() == positiveInfinity)
+        os << "inf s";
+    else if (value.get() == negativeInfinity)
+        os << "-inf s";
+    else if (value > values::psimsec(-1000) && value < values::psimsec(1000))
+        os << values::psimsec(value);
+    else if (value > values::nsimsec(-1000) && value < values::nsimsec(1000))
+        os << values::nsimsec(value);
+    else if (value > values::usimsec(-1000) && value < values::usimsec(1000))
+        os << values::usimsec(value);
+    else if (value > values::msimsec(-1000) && value < values::msimsec(1000))
+        os << values::msimsec(value);
+    else {
+        os << value.get() << ' ';
+        output_unit<units::s>::fn(os);
+    }
+    return os;
+}
 
 namespace constants {
 
 // Physical constants:
-const value<double, compose<units::J, pow<units::K, -1> > > k(1.3806504e-23);
+const value<double, compose<units::J, pow<units::K, -1>>> k(1.3806504e-23);
 const value<double, units::kg> mu(1.660538782e-27);
-const value<double, pow<units::mol, -1> > NA(6.02214179e23);
+const value<double, pow<units::mol, -1>> NA(6.02214179e23);
 const value<double, units::s> G0(7.7480917004e-5);
-const value<double, compose<units::F, pow<units::m, -1> > > e0(8.854187817e-12);
+const value<double, compose<units::F, pow<units::m, -1>>> e0(8.854187817e-12);
 const value<double, units::kg> me(9.10938215e-31);
 const value<double, units::J> eV(1.602176487e-19);
 const value<double, units::C> e(1.602176487e-19);
 const value<double, units::F> F(96485.3399);
 const value<double, units::unit> alpha(7.2973525376e-3);
 const value<double, units::unit> inv_alpha(137.035999679);
-const value<double, compose<units::N, pow<units::A, -2> > > u0(12.566370614e-7);
-const value<double, units::Wb> phi0(2.067833667e-15);    // ??
-const value<double, compose<units::J, compose<pow<units::mol, -1>, pow<units::kg, -1> > > > R(8.314472);
-const value<double, compose<pow<units::m, 3>, compose<pow<units::kg, -1>, pow<units::s, -2> > > > G(6.67428e-11);
-const value<double, compose<units::J, units::s> > h(6.62606896e-34);
-const value<double, compose<units::J, units::s> > h_bar(1.054571628e-34);
+const value<double, compose<units::N, pow<units::A, -2>>> u0(12.566370614e-7);
+const value<double, units::Wb> phi0(2.067833667e-15); // ??
+const value<double, compose<units::J, compose<pow<units::mol, -1>, pow<units::kg, -1>>>> R(8.314472);
+const value<double, compose<pow<units::m, 3>, compose<pow<units::kg, -1>, pow<units::s, -2>>>> G(6.67428e-11);
+const value<double, compose<units::J, units::s>> h(6.62606896e-34);
+const value<double, compose<units::J, units::s>> h_bar(1.054571628e-34);
 const value<double, units::kg> mp(1.672621637e-27);
 const value<double, unit> mpme(1836.15267247);
-const value<double, pow<units::m, -1> > Rinf(10973731.568527);
-const value<double, compose<units::m, pow<units::s, -1> > > c(299792458);
-const value<double, compose<units::W, compose<pow<units::m, -1>, pow<units::K, -4> > > > rho(5.6704e-8);
+const value<double, pow<units::m, -1>> Rinf(10973731.568527);
+const value<double, compose<units::m, pow<units::s, -1>>> c(299792458);
+const value<double, compose<units::W, compose<pow<units::m, -1>, pow<units::K, -4>>>> rho(5.6704e-8);
 
 // Other constants:
 const value<double, units::rad> pi(3.141592653589793);
 const value<double, units::m> lightyear(9.4605284e15);
-const value<double, compose<units::m, pow<units::s, -2> > > g(9.80665);
+const value<double, compose<units::m, pow<units::s, -2>>> g(9.80665);
 
 } // namespace constants
 
@@ -1207,5 +1536,5 @@ Value tan(const value<Value, Unit>& angle)
 
 } // namespace inet
 
-#endif // ifndef __INET_UNITS_H
+#endif
 

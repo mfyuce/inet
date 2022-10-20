@@ -1,26 +1,16 @@
 //
-// Copyright (C) 2013 Opensim Ltd.
+// Copyright (C) 2013 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
-// Author: Levente Meszaros (levy@omnetpp.org)
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
 
-#include <algorithm>
+
 #include "inet/common/lifecycle/NodeStatus.h"
+
+#include <algorithm>
+
 #include "inet/common/ModuleAccess.h"
-#include "inet/common/lifecycle/NodeOperations.h"
+#include "inet/common/lifecycle/ModuleOperations.h"
 
 namespace inet {
 
@@ -35,7 +25,7 @@ void NodeStatus::initialize(int stage)
 
     if (stage == INITSTAGE_LOCAL) {
         state = getStateByName(par("initialStatus"));
-        origIcon = getDisplayString().getTagArg("i", 0);
+        WATCH(state);
     }
 }
 
@@ -47,18 +37,19 @@ NodeStatus::State NodeStatus::getStateByName(const char *name)
     int state = e->lookup(temp.c_str(), -1);
     if (state == -1)
         throw cRuntimeError("Invalid state name '%s'", name);
-    return (State)state;
+    return static_cast<State>(state);
 }
 
-bool NodeStatus::handleOperationStage(LifecycleOperation *operation, int opStage, IDoneCallback *doneCallback)
+bool NodeStatus::handleOperationStage(LifecycleOperation *operation, IDoneCallback *doneCallback)
 {
-    Enter_Method_Silent();
+    Enter_Method("handleOperationStage");
+    int opStage = operation->getCurrentStage();
     cModule *node = getContainingNode(this);
-    if (dynamic_cast<NodeStartOperation *>(operation)) {
+    if (dynamic_cast<ModuleStartOperation *>(operation)) {
         if (opStage == 0) {
             EV << node->getFullPath() << " starting up" << endl;
             if (getState() != DOWN)
-                throw cRuntimeError("Current node status is not 'down' at NodeStartOperation");
+                throw cRuntimeError("Current node status is not 'down' at ModuleStartOperation");
             setState(GOING_UP);
         }
         // NOTE: this is not an 'else if' so that it works if there's only 1 stage
@@ -66,13 +57,14 @@ bool NodeStatus::handleOperationStage(LifecycleOperation *operation, int opStage
             ASSERT(getState() == GOING_UP);
             setState(UP);
             EV << node->getFullPath() << " started" << endl;
+            node->bubble("Node started");
         }
     }
-    else if (dynamic_cast<NodeShutdownOperation *>(operation)) {
+    else if (dynamic_cast<ModuleStopOperation *>(operation)) {
         if (opStage == 0) {
             EV << node->getFullPath() << " shutting down" << endl;
             if (getState() != UP)
-                throw cRuntimeError("Current node status is not 'up' at NodeShutdownOperation");
+                throw cRuntimeError("Current node status is not 'up' at ModuleStopOperation");
             setState(GOING_DOWN);
         }
         // NOTE: this is not an 'else if' so that it works if there's only 1 stage
@@ -80,13 +72,14 @@ bool NodeStatus::handleOperationStage(LifecycleOperation *operation, int opStage
             ASSERT(getState() == GOING_DOWN);
             setState(DOWN);
             EV << node->getFullPath() << " shut down" << endl;
+            node->bubble("Node shut down");
         }
     }
-    else if (dynamic_cast<NodeCrashOperation *>(operation)) {
+    else if (dynamic_cast<ModuleCrashOperation *>(operation)) {
         if (opStage == 0) {
             EV << node->getFullPath() << " crashing" << endl;
             if (getState() != UP)
-                throw cRuntimeError("Current node status is not 'up' at NodeCrashOperation");
+                throw cRuntimeError("Current node status is not 'up' at ModuleCrashOperation");
             setState(GOING_DOWN);
         }
         // NOTE: this is not an 'else if' so that it works if there's only 1 stage
@@ -94,6 +87,7 @@ bool NodeStatus::handleOperationStage(LifecycleOperation *operation, int opStage
             ASSERT(getState() == GOING_DOWN);
             setState(DOWN);
             EV << node->getFullPath() << " crashed" << endl;
+            node->bubble("Node crashed");
         }
     }
     return true;
@@ -108,33 +102,38 @@ void NodeStatus::setState(State s)
 void NodeStatus::refreshDisplay() const
 {
     const char *icon;
+    const char *text;
     switch (state) {
         case UP:
             icon = "";
+            text = "up";
             break;
-
         case DOWN:
             icon = "status/cross";
+            text = "down";
             break;
-
         case GOING_UP:
             icon = "status/execute";
+            text = "going up";
             break;
-
         case GOING_DOWN:
             icon = "status/execute";
+            text = "going down";
             break;
-
         default:
             throw cRuntimeError("Unknown status");
     }
+    auto& displayString = getDisplayString();
+    displayString.setTagArg("t", 0, text);
     cModule *node = getContainingNode(this);
-    const char *myicon = state == UP ? origIcon.c_str() : icon;
-    getDisplayString().setTagArg("i", 0, myicon);
-    if (*icon)
+    if (*icon) {
+        displayString.setTagArg("i2", 0, icon);
         node->getDisplayString().setTagArg("i2", 0, icon);
-    else
+    }
+    else {
+        displayString.removeTag("i2");
         node->getDisplayString().removeTag("i2");
+    }
 }
 
 } // namespace inet

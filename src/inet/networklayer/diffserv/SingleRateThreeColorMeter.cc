@@ -1,24 +1,14 @@
 //
-// Copyright (C) 2012 Opensim Ltd.
-// Author: Tamas Borbely
+// Copyright (C) 2012 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
 
+
 #include "inet/networklayer/diffserv/SingleRateThreeColorMeter.h"
-#include "inet/networklayer/diffserv/DiffservUtil.h"
+
 #include "inet/common/ModuleAccess.h"
+#include "inet/networklayer/diffserv/DiffservUtil.h"
 
 namespace inet {
 
@@ -28,8 +18,7 @@ Define_Module(SingleRateThreeColorMeter);
 
 void SingleRateThreeColorMeter::initialize(int stage)
 {
-    cSimpleModule::initialize(stage);
-
+    PacketMeterBase::initialize(stage);
     if (stage == INITSTAGE_LOCAL) {
         numRcvd = 0;
         numYellow = 0;
@@ -38,8 +27,8 @@ void SingleRateThreeColorMeter::initialize(int stage)
         WATCH(numYellow);
         WATCH(numRed);
 
-        CBS = 8 * (int)par("cbs");
-        EBS = 8 * (int)par("ebs");
+        CBS = 8 * par("cbs").intValue();
+        EBS = 8 * par("ebs").intValue();
         colorAwareMode = par("colorAwareMode");
         Tc = CBS;
         Te = EBS;
@@ -52,29 +41,28 @@ void SingleRateThreeColorMeter::initialize(int stage)
     }
 }
 
-void SingleRateThreeColorMeter::handleMessage(cMessage *msg)
+void SingleRateThreeColorMeter::pushPacket(Packet *packet, cGate *inputGate)
 {
-    cPacket *packet = findIPDatagramInPacket(check_and_cast<cPacket *>(msg));
-    if (!packet)
-        throw cRuntimeError("SingleRateThreeColorMeter received a packet that does not encapsulate an IP datagram.");
-
     numRcvd++;
+    cGate *outputGate = nullptr;
     int color = meterPacket(packet);
     switch (color) {
         case GREEN:
-            send(packet, "greenOut");
+            outputGate = gate("greenOut");
             break;
 
         case YELLOW:
             numYellow++;
-            send(packet, "yellowOut");
+            outputGate = gate("yellowOut");
             break;
 
         case RED:
             numRed++;
-            send(packet, "redOut");
+            outputGate = gate("redOut");
             break;
     }
+    auto consumer = findConnectedModule<IPassivePacketSink>(outputGate);
+    pushOrSendPacket(packet, outputGate, consumer);
 }
 
 void SingleRateThreeColorMeter::refreshDisplay() const
@@ -89,7 +77,7 @@ void SingleRateThreeColorMeter::refreshDisplay() const
     getDisplayString().setTagArg("t", 0, buf);
 }
 
-int SingleRateThreeColorMeter::meterPacket(cPacket *packet)
+int SingleRateThreeColorMeter::meterPacket(Packet *packet)
 {
     // update token buckets
     simtime_t currentTime = simTime();

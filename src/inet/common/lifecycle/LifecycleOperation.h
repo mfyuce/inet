@@ -1,18 +1,9 @@
 //
-// (C) 2013 Opensim Ltd.
+// Copyright (C) 2013 OpenSim Ltd.
 //
-// This library is free software, you can redistribute it
-// and/or modify
-// it under  the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation;
-// either version 2 of the License, or any later version.
-// The library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-// See the GNU Lesser General Public License for more details.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// Author: Andras Varga (andras@omnetpp.org)
-//
+
 
 #ifndef __INET_LIFECYCLEOPERATION_H
 #define __INET_LIFECYCLEOPERATION_H
@@ -36,18 +27,12 @@ class INET_API LifecycleOperation : public cObject, public noncopyable
     friend class LifecycleController;
     typedef std::map<std::string, std::string> StringMap;
 
-    enum Kind {
-        UP,    ///< Start, boot, resume, recover, interface up, etc.
-        DOWN,    ///< Shutdown, suspend, stop, crash, interface down, etc.
-        MOMENTARY    ///< Some kind of incident, e.g. corruption of a memory cell
-    };
-
   private:
-    cModule *rootModule;
-    int currentStage;
+    cModule *rootModule = nullptr;
+    int currentStage = 0;
     std::vector<IDoneCallback *> pendingList;
-    bool insideInitiateOperation;
-    IDoneCallback *operationCompletionCallback;
+    bool insideInitiateOperation = false;
+    IDoneCallback *operationCompletionCallback = nullptr;
 
   public:
     LifecycleOperation() :
@@ -61,14 +46,13 @@ class INET_API LifecycleOperation : public cObject, public noncopyable
      * treat that as an error, and report the remaining parameters as
      * unrecognized by the operation.
      */
-    virtual void initialize(cModule *module, StringMap& params) { rootModule = module; }
-
-    /**
-     * Returns the "kind" or "direction" of the operation. This attribute is
-     * provided for convenience, it is not used by the lifecycle infrastructure
-     * itself.
-     */
-    virtual Kind getKind() const = 0;    //TODO not sure this is actually useful
+    virtual void initialize(cModule *module, StringMap& params) {
+        cProperties *props = module->getProperties();
+        if (props && (props->getAsBool("networkNode") || props->getAsBool("lifecycleSupport")))
+            rootModule = module;
+        else
+            throw cRuntimeError("LifecycleOperation not accepted directly by '(%s)%s' module", module->getClassName(), module->getFullPath().c_str());
+    }
 
     /**
      * Returns the module the operation is initiated on.
@@ -88,5 +72,5 @@ class INET_API LifecycleOperation : public cObject, public noncopyable
 
 } // namespace inet
 
-#endif // ifndef __INET_LIFECYCLEOPERATION_H
+#endif
 

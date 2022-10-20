@@ -1,27 +1,24 @@
+//
+// copyright:   (C) 2007-2009 CSEM SA, Neuchatel, Switzerland.
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+//
 //***************************************************************************
 // file:        WiseRoute.ned
 //
 // author:      Damien Piguet, Jerome Rousselot
 //
-// copyright:   (C) 2007-2009 CSEM SA, Neuchatel, Switzerland.
-//
 // description: Implementation of the routing protocol of WiseStack.
-//
-// *              This program is free software; you can redistribute it
-// *              and/or modify it under the terms of the GNU General Public
-// *              License as published by the Free Software Foundation; either
-// *              version 2 of the License, or (at your option) any later
-// *              version
-// *              For further information see file COPYING
-// *              in the top level directory
 // *
-// * Funding: This work was partially financed by the European Commission under the  
+// * Funding: This work was partially financed by the European Commission under the
 // * Framework 6 IST Project "Wirelessly Accessible Sensor Populations"
 // * (WASP) under contract IST-034963.
 // ***************************************************************************
 // * ported to Mixim 2.0.1 by Theodoros Kapourniotis
 // * last modification: 06/02/11
 // **************************************************************************/
+
 package inet.networklayer.wiseroute;
 
 import inet.networklayer.base.NetworkProtocolBase;
@@ -47,7 +44,7 @@ import inet.networklayer.contract.INetworkProtocol;
 simple WiseRoute extends NetworkProtocolBase like INetworkProtocol
 {
     parameters:
-        int headerLength @unit(bit) = default(100b); // length of the network packet header (in bits)
+        int headerLength @unit(b) = default(96b); // length of the network packet header (in bits)
 
         // debug switch
         bool debug = default(false);
@@ -71,3 +68,4 @@ simple WiseRoute extends NetworkProtocolBase like INetworkProtocol
         @display("i=block/fork");
         @class(WiseRoute);
 }
+

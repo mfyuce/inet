@@ -1,122 +1,141 @@
 //
 // Copyright (C) 2013 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
-// author: Zoltan Bojthe
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
 
-#ifndef __INET_INITSTAGES
-#define __INET_INITSTAGES
+
+#ifndef __INET_INITSTAGES_H
+#define __INET_INITSTAGES_H
+
+#include "inet/common/InitStageRegistry.h"
 
 namespace inet {
 
 /**
- * Initialization stages.
+ * Initialization of local state that don't use or affect other modules includes:
+ *  - initializing member variables
+ *  - initializing statistic collection
+ *  - reading module parameters
+ *  - reading configuration files
+ *  - adding watches
+ *  - looking up other modules without actually using them
+ *  - subscribing to module signals
  */
-enum InitStages {
-    /**
-     * Local initializations. Initializations that don't use or affect
-     * other modules take place (e.g. reading of parameters); modules may
-     * subscribe to notifications. NodeStatus, IPassiveQueue,
-     * etc. are available for other modules after this stage.
-     */
-    INITSTAGE_LOCAL = 0,
+extern INET_API InitStage INITSTAGE_LOCAL;
 
-    /**
-     * Physical environment initializations (mobility, obstacles, battery, annotations, etc).
-     */
-    INITSTAGE_PHYSICAL_ENVIRONMENT = 1,
+/**
+ * Initialization of clocks.
+ */
+extern INET_API InitStage INITSTAGE_CLOCK;
 
-    /**
-     * Additional physical environment initializations that depend on the previous stage.
-     * Some mobility modules (namely group mobility) compute and publish locations in this stage,
-     * because they learn their mobility coordinator in the previous stage.
-     */
-    INITSTAGE_PHYSICAL_ENVIRONMENT_2 = 2,
+/**
+ * Initialization of the physical environment.
+ */
+extern INET_API InitStage INITSTAGE_PHYSICAL_ENVIRONMENT;
 
-    /**
-     * Initialization of the physical layer of protocol stacks. Radio publishes the initial RadioState;
-     * radios are registered in RadioMedium.
-     */
-    INITSTAGE_PHYSICAL_LAYER = 3,
+/**
+ * Initialization of the cache of physical objects present in the physical environment.
+ */
+extern INET_API InitStage INITSTAGE_PHYSICAL_OBJECT_CACHE;
 
-    /**
-     * Initialization of link-layer protocols. Automatic MAC addresses are
-     * assigned; interfaces are registered in InterfaceTable.
-     */
-    INITSTAGE_LINK_LAYER = 4,
+/**
+ * Initialization of group mobility modules: calculating the initial position and orientation.
+ */
+extern INET_API InitStage INITSTAGE_GROUP_MOBILITY;
 
-    /**
-     * Additional link-layer initializations that depend on the previous stage.
-     */
-    INITSTAGE_LINK_LAYER_2 = 5,
+/**
+ * Initialization of single mobility modules: calculating the initial position and orientation.
+ */
+extern INET_API InitStage INITSTAGE_SINGLE_MOBILITY;
 
-    /**
-     * Initialization of network-layer protocols, stage 1. Network configurators
-     * (e.g. IPv4NetworkConfigurator) run in this stage and compute IP addresses
-     * and static routes; protocol-specific data (e.g. IPv4InterfaceData)
-     * are added to InterfaceEntry; netf7ilter hooks are registered in IPv4; etc.
-     */
-    INITSTAGE_NETWORK_LAYER = 6,
+/**
+ * Initialization of the power model: energy storage, energy consumer, energy generator, and energy management modules.
+ */
+extern INET_API InitStage INITSTAGE_POWER;
 
-    /**
-     * Initialization of network-layer protocols, stage 2. IP addresses
-     * are assigned in this stage.
-     */
-    INITSTAGE_NETWORK_LAYER_2 = 7,
+/**
+ * Initialization of physical layer protocols includes:
+ *  - registering radios in the RadioMedium
+ *  - initializing radio mode, transmission and reception states
+ */
+extern INET_API InitStage INITSTAGE_PHYSICAL_LAYER;
 
-    /**
-     * Initialization of network-layer protocols, stage 3. Static routes
-     * are added, routerIDs are computed, etc.
-     */
-    INITSTAGE_NETWORK_LAYER_3 = 8,
+/**
+ * Initialization of physical layer neighbor cache.
+ */
+extern INET_API InitStage INITSTAGE_PHYSICAL_LAYER_NEIGHBOR_CACHE;
 
-    /**
-     * Initialization of transport-layer protocols. Transport protocols register
-     * their protocol IDs in IP, etc.
-     */
-    INITSTAGE_TRANSPORT_LAYER = 9,
+/**
+ * Initialization of network interfaces includes:
+ *  - assigning MAC addresses
+ *  - registering network interfaces in the InterfaceTable
+ */
+extern INET_API InitStage INITSTAGE_NETWORK_INTERFACE_CONFIGURATION;
 
-    /**
-     * Initialization of transport-layer protocols, 2nd stage. Exists because SCTP
-     * may be transported over UDP.
-     */
-    INITSTAGE_TRANSPORT_LAYER_2 = 10,
+/**
+ * Initialization of queueing modules.
+ */
+extern INET_API InitStage INITSTAGE_QUEUEING;
 
-    /**
-     * Initialization of routing protocols.
-     */
-    INITSTAGE_ROUTING_PROTOCOLS = 11,
+/**
+ * Initialization of link-layer protocols.
+ */
+extern INET_API InitStage INITSTAGE_LINK_LAYER;
 
-    /**
-     * Initialization of applications.
-     */
-    INITSTAGE_APPLICATION_LAYER = 12,
+/**
+ * Initialization of network configuration (e.g. Ipv4NetworkConfigurator) includes:
+ *  - determining IP addresses and static routes
+ *  - adding protocol-specific data (e.g. Ipv4InterfaceData) to NetworkInterface
+ */
+extern INET_API InitStage INITSTAGE_NETWORK_CONFIGURATION;
 
-    /**
-     * Operations that no other initializations can depend on, e.g. display string updates.
-     */
-    INITSTAGE_LAST = 13,
+/**
+ * Initialization of network addresses.
+ */
+extern INET_API InitStage INITSTAGE_NETWORK_ADDRESS_ASSIGNMENT;
 
-    /**
-     * The number of initialization stages.
-     */
-    NUM_INIT_STAGES,
-};
+/**
+ * Initialization of network addresses.
+ */
+extern INET_API InitStage INITSTAGE_ROUTER_ID_ASSIGNMENT;
+
+/**
+ * Initialization of static routing.
+ */
+extern INET_API InitStage INITSTAGE_STATIC_ROUTING;
+
+/**
+ * Initialization of network layer protocols. (IPv4, IPv6, ...)
+ */
+extern INET_API InitStage INITSTAGE_NETWORK_LAYER;
+
+/**
+ * Initialization of network layer protocols over IP. (ICMP, IGMP, ...)
+ */
+extern INET_API InitStage INITSTAGE_NETWORK_LAYER_PROTOCOLS;
+
+/**
+ * Initialization of transport-layer protocols.
+ */
+extern INET_API InitStage INITSTAGE_TRANSPORT_LAYER;
+
+/**
+ * Initialization of routing protocols.
+ */
+extern INET_API InitStage INITSTAGE_ROUTING_PROTOCOLS;
+
+/**
+ * Initialization of applications.
+ */
+extern INET_API InitStage INITSTAGE_APPLICATION_LAYER;
+
+/**
+ * Operations that no other initializations can depend on, e.g. display string updates.
+ */
+extern INET_API InitStage INITSTAGE_LAST;
 
 } // namespace inet
 
-#endif    // __INET_INITSTAGES
+#endif
 

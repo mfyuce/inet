@@ -1,82 +1,44 @@
 //
-// Copyright (C) 2010 Zoltan Bojthe
+// Copyright (C) 2010 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-//
+
 
 #ifndef __INET_TCPLWIPCONNECTION_H
 #define __INET_TCPLWIPCONNECTION_H
 
-#include "inet/common/INETDefs.h"
-
+#include "inet/common/packet/Packet.h"
 #include "inet/networklayer/common/L3Address.h"
+#include "inet/transportlayer/contract/tcp/TcpCommand_m.h"
+#include "inet/transportlayer/tcp_common/TcpHeader.h"
+#include "inet/transportlayer/tcp_lwip/queues/TcpLwipQueues.h"
 #include "lwip/lwip_tcp.h"
-#include "inet/transportlayer/tcp_common/TCPSegment.h"
-#include "inet/transportlayer/contract/tcp/TCPCommand_m.h"
 
 namespace inet {
-
-// forward declarations:
-class TCPConnectInfo;
-class TCPStatusInfo;
-
 namespace tcp {
 
 // forward declarations:
-class TCP_lwIP;
-class TcpLwipReceiveQueue;
-class TcpLwipSendQueue;
-class INetStack;
-class INetStreamSocket;
+class TcpLwip;
 
 /**
- *
+ * Module for representing a connection in TcpLwip stack
  */
-class INET_API TcpLwipConnection
+class INET_API TcpLwipConnection : public cSimpleModule
 {
   protected:
-    class Stats
-    {
-      public:
-        Stats();
-        ~Stats();
-        void recordSend(const TCPSegment& tcpsegP);
-        void recordReceive(const TCPSegment& tcpsegP);
-
-      protected:
-        // statistics
-        cOutVector sndWndVector;    // snd_wnd
-        cOutVector sndSeqVector;    // sent seqNo
-        cOutVector sndAckVector;    // sent ackNo
-
-        cOutVector rcvWndVector;    // rcv_wnd
-        cOutVector rcvSeqVector;    // received seqNo
-        cOutVector rcvAckVector;    // received ackNo (= snd_una)
-    };
-
     // prevent copy constructor:
     TcpLwipConnection(const TcpLwipConnection&);
 
   public:
-    TcpLwipConnection(TCP_lwIP& tcpLwipP, int connIdP, int gateIndexP,
-            TCPDataTransferMode dataTransferModeP);
-
-    TcpLwipConnection(TcpLwipConnection& tcpLwipConnectionP, int connIdP,
-            LwipTcpLayer::tcp_pcb *pcbP);
-
+    TcpLwipConnection() {}
     ~TcpLwipConnection();
+
+    void initConnection(TcpLwip& tcpLwipP, int connIdP);
+    void initConnection(TcpLwipConnection& tcpLwipConnectionP, int connIdP, LwipTcpLayer::tcp_pcb *pcbP);
+
+    /** Utility: sends TCP_I_AVAILABLE indication with TcpAvailableInfo to application */
+    void sendAvailableIndicationToApp(int listenConnId);
 
     void sendEstablishedMsg();
 
@@ -84,48 +46,61 @@ class INET_API TcpLwipConnection
 
     void sendIndicationToApp(int code);
 
-    void listen(L3Address& localAddr, unsigned short localPort);
-
-    void connect(L3Address& localAddr, unsigned short localPort, L3Address& remoteAddr,
-            unsigned short remotePort);
-
-    void close();
-
-    void abort();
-
-    void send(cPacket *msgP);
-
-    void fillStatusInfo(TCPStatusInfo& statusInfo);
-
-    void notifyAboutSending(const TCPSegment& tcpsegP);
-
-    int send_data(void *data, int len);
+    void notifyAboutSending(const TcpHeader& tcpsegP);
 
     void do_SEND();
 
-    INetStreamSocket *getSocket();
+    bool isSendUpEnabled() { return sendUpEnabled; }
 
-    void initStats();
+    void sendUpData();
+
+    void processAppCommand(cMessage *msgP);
+
+  protected:
+    void listen(const L3Address& localAddr, unsigned short localPort);
+    void connect(const L3Address& localAddr, unsigned short localPort, const L3Address& remoteAddr, unsigned short remotePort);
+    void close();
+    void abort();
+    void accept();
+    void send(Packet *msgP);
+    int send_data(void *data, int len);
+    void recordSend(const TcpHeader& tcpsegP);
+    void recordReceive(const TcpHeader& tcpsegP);
+    void process_OPEN_ACTIVE(TcpOpenCommand *tcpCommandP, cMessage *msgP);
+    void process_OPEN_PASSIVE(TcpOpenCommand *tcpCommandP, cMessage *msgP);
+    void process_ACCEPT(TcpAcceptCommand *tcpCommand, cMessage *msg);
+    void process_SEND(Packet *msgP);
+    void process_CLOSE(TcpCommand *tcpCommandP, cMessage *msgP);
+    void process_ABORT(TcpCommand *tcpCommandP, cMessage *msgP);
+    void process_STATUS(TcpCommand *tcpCommandP, cMessage *msgP);
+    void fillStatusInfo(TcpStatusInfo& statusInfo);
 
   public:
     int connIdM;
-    int appGateIndexM;
-    LwipTcpLayer::tcp_pcb *pcbM;
-    TcpLwipSendQueue *sendQueueM;
-    TcpLwipReceiveQueue *receiveQueueM;
-    TCP_lwIP& tcpLwipM;
+    LwipTcpLayer::tcp_pcb *pcbM = nullptr;
+    TcpLwipSendQueue *sendQueueM = nullptr;
+    TcpLwipReceiveQueue *receiveQueueM = nullptr;
+    TcpLwip *tcpLwipM = nullptr;
 
   protected:
-    long int totalSentM;
-    bool isListenerM;
-    bool onCloseM;
+    long int totalSentM = 0;
+    bool isListenerM = false;
+    bool onCloseM = false;
+    bool sendUpEnabled = false;
 
-    Stats *statsM;
+    // statistics
+    static simsignal_t sndWndSignal; // snd_wnd
+    static simsignal_t sndNxtSignal; // sent seqNo
+    static simsignal_t sndAckSignal; // sent ackNo
+
+    static simsignal_t rcvWndSignal; // rcv_wnd
+    static simsignal_t rcvSeqSignal; // received seqNo
+    static simsignal_t rcvAckSignal; // received ackNo (= snd_una)
 };
 
 } // namespace tcp
 
 } // namespace inet
 
-#endif // ifndef __INET_TCPLWIPCONNECTION_H
+#endif
 

@@ -1,37 +1,25 @@
 //
-// Copyright (C) 2012 Opensim Ltd.
-// Author: Tamas Borbely
+// Copyright (C) 2012 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
 
-#include "inet/networklayer/common/InterfaceEntry.h"
-#include "inet/common/INETUtils.h"
-
-#ifdef WITH_IPv4
-#include "inet/networklayer/ipv4/IPv4Datagram.h"
-#endif // ifdef WITH_IPv4
-
-#ifdef WITH_IPv6
-#include "inet/networklayer/ipv6/IPv6Datagram.h"
-#endif // ifdef WITH_IPv6
 
 #include "inet/networklayer/diffserv/DiffservUtil.h"
-#include "inet/networklayer/diffserv/DSCP_m.h"
+
+#include "inet/common/INETUtils.h"
+#include "inet/networklayer/common/NetworkInterface.h"
+#include "inet/networklayer/diffserv/Dscp_m.h"
+
+#ifdef INET_WITH_IPv4
+#include "inet/networklayer/ipv4/Ipv4Header_m.h"
+#endif // ifdef INET_WITH_IPv4
+
+#ifdef INET_WITH_IPv6
+#include "inet/networklayer/ipv6/Ipv6Header.h"
+#endif // ifdef INET_WITH_IPv6
 
 namespace inet {
-
 namespace DiffservUtil {
 
 using namespace utils;
@@ -40,17 +28,9 @@ using namespace utils;
 cEnum *dscpEnum = nullptr;
 cEnum *protocolEnum = nullptr;
 
-const char *getRequiredAttribute(cXMLElement *element, const char *attrName)
-{
-    const char *attrValue = element->getAttribute(attrName);
-    if (!attrValue)
-        throw cRuntimeError("missing attribute '%s' from <%s> element", attrName, element->getTagName());
-    return attrValue;
-}
-
 double parseInformationRate(const char *attrValue, const char *attrName, IInterfaceTable *ift, cSimpleModule& owner, int defaultValue)
 {
-    if (isEmpty(attrValue))
+    if (opp_isempty(attrValue))
         return defaultValue;
 
     const char *percentPtr = strchr(attrValue, '%');
@@ -60,7 +40,7 @@ double parseInformationRate(const char *attrValue, const char *attrName, IInterf
         if (e != percentPtr)
             throw cRuntimeError("malformed %s attribute: %s", attrName, attrValue);
         if (percent < 0.0 || percent > 100.0)
-            throw cRuntimeError("%s must be between 0\% and 100\%, found: %s", attrName, attrValue);
+            throw cRuntimeError("%s must be between 0%% and 100%%, found: %s", attrName, attrValue);
 
         double datarate = getInterfaceDatarate(ift, &owner);
         if (datarate < 0.0)
@@ -77,7 +57,7 @@ double parseInformationRate(const char *attrValue, const char *attrName, IInterf
 
 int parseIntAttribute(const char *attrValue, const char *attrName, bool isOptional)
 {
-    if (isEmpty(attrValue)) {
+    if (opp_isempty(attrValue)) {
         if (isOptional)
             return -1;
         else
@@ -102,12 +82,12 @@ int parseIntAttribute(const char *attrValue, const char *attrName, bool isOption
 
 int parseProtocol(const char *attrValue, const char *attrName)
 {
-    if (isEmpty(attrValue))
+    if (opp_isempty(attrValue))
         return -1;
     if (isdigit(*attrValue))
         return parseIntAttribute(attrValue, attrName);
     if (!protocolEnum)
-        protocolEnum = cEnum::get("inet::IPProtocolId");
+        protocolEnum = cEnum::get("inet::IpProtocolId");
     char name[20];
     strcpy(name, "IP_PROT_");
     char *dest;
@@ -120,16 +100,16 @@ int parseProtocol(const char *attrValue, const char *attrName)
 
 int parseDSCP(const char *attrValue, const char *attrName)
 {
-    if (isEmpty(attrValue))
+    if (opp_isempty(attrValue))
         throw cRuntimeError("missing %s attribute", attrName);
     if (isdigit(*attrValue)) {
         int dscp = parseIntAttribute(attrValue, attrName);
         if (dscp < 0 || dscp >= DSCP_MAX)
-            throw cRuntimeError("value of %s attribute is out of range [0,%d)", DSCP_MAX);
+            throw cRuntimeError("value of %s attribute is out of range [0,%d)", attrName, DSCP_MAX);
         return dscp;
     }
     if (!dscpEnum)
-        dscpEnum = cEnum::get("inet::DSCP");
+        dscpEnum = cEnum::get("inet::Dscp");
     char name[20];
     strcpy(name, "DSCP_");
     const char *src;
@@ -146,7 +126,7 @@ int parseDSCP(const char *attrValue, const char *attrName)
 
 void parseDSCPs(const char *attrValue, const char *attrName, std::vector<int>& result)
 {
-    if (isEmpty(attrValue))
+    if (opp_isempty(attrValue))
         return;
     if (*attrValue == '*' && *(attrValue + 1) == '\0') {
         for (int dscp = 0; dscp < DSCP_MAX; ++dscp)
@@ -162,7 +142,7 @@ void parseDSCPs(const char *attrValue, const char *attrName, std::vector<int>& r
 std::string dscpToString(int dscp)
 {
     if (!dscpEnum)
-        dscpEnum = cEnum::get("inet::DSCP");
+        dscpEnum = cEnum::get("inet::Dscp");
     const char *name = dscpEnum->getStringFor(dscp);
     if (name) {
         if (!strncmp(name, "DSCP_", 5))
@@ -192,27 +172,11 @@ std::string colorToString(int color)
 
 double getInterfaceDatarate(IInterfaceTable *ift, cSimpleModule *interfaceModule)
 {
-    InterfaceEntry *ie = ift ? ift->getInterfaceByInterfaceModule(interfaceModule) : nullptr;
+    NetworkInterface *ie = ift ? ift->findInterfaceByInterfaceModule(interfaceModule) : nullptr;
     return ie ? ie->getDatarate() : -1;
 }
 
-cPacket *findIPDatagramInPacket(cPacket *packet)
-{
-    for ( ; packet; packet = packet->getEncapsulatedPacket()) {
-#ifdef WITH_IPv4
-        if (dynamic_cast<IPv4Datagram *>(packet))
-            return packet;
-#endif // ifdef WITH_IPv4
-#ifdef WITH_IPv6
-        if (dynamic_cast<IPv6Datagram *>(packet))
-            return packet;
-#endif // ifdef WITH_IPv6
-    }
-
-    return nullptr;
-}
-
-class ColorAttribute : public cObject
+class INET_API ColorAttribute : public cObject
 {
   public:
     int color;
@@ -220,7 +184,7 @@ class ColorAttribute : public cObject
   public:
     ColorAttribute(int color) : color(color) {}
     virtual const char *getName() const override { return "dscolor"; }
-    virtual std::string info() const override { return colorToString(color); }
+    virtual std::string str() const override { return colorToString(color); }
     virtual cObject *dup() const override { return new ColorAttribute(color); }
 };
 

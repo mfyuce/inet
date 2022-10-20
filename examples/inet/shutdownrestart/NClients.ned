@@ -1,31 +1,19 @@
 //
-// Copyright (C) 2004 Andras Varga
+// Copyright (C) 2004 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-//
+
 
 
 
 
 package inet.examples.inet.shutdownrestart;
 
-import inet.common.lifecycle.LifecycleController;
 import inet.common.misc.ThruputMeteringChannel;
 import inet.common.scenario.ScenarioManager;
-import inet.networklayer.configurator.ipv4.IPv4NetworkConfigurator;
-import inet.node.ethernet.EtherSwitch;
+import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
+import inet.node.ethernet.EthernetSwitch;
 import inet.node.inet.Router;
 import inet.node.inet.StandardHost;
 
@@ -34,7 +22,6 @@ network NClients
 {
     parameters:
         int n;
-        @display("bgb=593,356");
     types:
         channel fiberline extends ThruputMeteringChannel
         {
@@ -50,39 +37,28 @@ network NClients
         }
     submodules:
         r1: Router {
-            @display("p=232,281");
+            @display("p=500,150");
         }
         r2: Router {
-            @display("p=324,219");
+            @display("p=650,150");
         }
         r3: Router {
-            @display("p=433,250");
+            @display("p=800,150");
         }
-        s: EtherSwitch {
-            @display("p=153,221");
+        s: EthernetSwitch {
+            @display("p=350,150");
         }
         cli[n]: StandardHost {
-            @display("i=device/laptop;p=51,269,r");
+            @display("i=device/laptop;p=250,100,col,100");
         }
         srv: StandardHost {
-            @display("p=544,194;i=device/server_l");
+            @display("p=950,150;i=device/server");
         }
-        configurator: IPv4NetworkConfigurator {
-            @display("p=75,47");
+        configurator: Ipv4NetworkConfigurator {
+            @display("p=100,100;is=s");
         }
         scenarioManager: ScenarioManager {
-            @display("p=75,101");
-            script = xml("<script>\n" +
-                "<at t='3s'><tell module='lifecycleController' operation='NodeShutdownOperation' target='r2'/></at>\n" +
-                "<at t='6s'><tell module='lifecycleController' operation='NodeStartOperation' target='r2'/></at>\n" +
-                "<at t='9s'><tell module='lifecycleController' operation='NodeShutdownOperation' target='r2'/></at>\n" +
-                "<at t='12s'><tell module='lifecycleController' operation='NodeStartOperation' target='r2'/></at>\n" +
-                "<at t='15s'><tell module='lifecycleController' operation='NodeShutdownOperation' target='cli[0]'/></at>\n" +
-                "<at t='18s'><tell module='lifecycleController' operation='NodeStartOperation' target='cli[0]'/></at>\n" +
-                "</script>");
-        }
-        lifecycleController: LifecycleController {
-            @display("p=75,155");
+            @display("p=100,200;is=s");
         }
     connections:
         for i=0..n-1 {

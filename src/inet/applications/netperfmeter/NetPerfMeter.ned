@@ -8,25 +8,17 @@
 // *
 // * --------------------------------------------------------------------------
 // *
-// *   Copyright (C) 2009-2015 by Thomas Dreibholz
-// *
-// *   This program is free software: you can redistribute it and/or modify
-// *   it under the terms of the GNU General Public License as published by
-// *   the Free Software Foundation, either version 3 of the License, or
-// *   (at your option) any later version.
-// *
-// *   This program is distributed in the hope that it will be useful,
-// *   but WITHOUT ANY WARRANTY; without even the implied warranty of
-// *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// *   GNU General Public License for more details.
-// *
-// *   You should have received a copy of the GNU General Public License
-// *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-// *
-// *   Contact: dreibh@iem.uni-due.de
+//
+// Copyright (C) 2009-2015 by Thomas Dreibholz <dreibh@iem.uni-due.de>
+//
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+
 
 package inet.applications.netperfmeter;
-import inet.applications.contract.INetPerfMeterApp;
+
+import inet.applications.contract.IApp;
+
 
 //
 // Application model for comparing the performance of various transport
@@ -39,13 +31,13 @@ import inet.applications.contract.INetPerfMeterApp;
 // protocols, e.g. TCP vs. SCTP.
 //
 // The model closely mimics the operation of the real-world NetPerfMeter
-// application (https://www.uni-due.de/~be0001/netperfmeter/), a tool for
+// application (https://www.uni-due.de/~~be0001/netperfmeter/), a tool for
 // measuring UDP, TCP, MPTCP, SCTP and DCCP performance over IPv4 and IPv6.
 // Since the parametrisation and features are similar to the real-world
 // application, the model also makes comparisons of simulation results and
 // real-world measurements easy.
 //
-simple NetPerfMeter like INetPerfMeterApp
+simple NetPerfMeter like IApp
 {
     parameters:
         bool            activeMode               = default(true);      // Server (false) or client (true)
@@ -69,23 +61,18 @@ simple NetPerfMeter like INetPerfMeterApp
         string          protocol                 = default("SCTP");    // Transport protocol to use
         string          primaryPath              = default("");        // primary path (may be symbolic; SCTP only)
 
-        string          dataTransferMode         = default("object");  // Data transfer mode for TCP socket (TCP only)
-
         volatile double frameRate      @unit(Hz) = default(1 Hz);      // Outgoing frame rate
-        volatile double frameSize      @unit(B)  = default(1452 B);    // Outgoing frame size
+        volatile int    frameSize      @unit(B)  = default(1452 B);    // Outgoing frame size
         string          frameRateString          = default("");        // Outgoing frame rate per stream, separated by ";"
         string          frameSizeString          = default("");        // Outgoing frame size per stream, separated by ";"
         string          traceFile                = default("");        // Use trace file instead of frame rate/frame size
-        double          maxMsgSize     @unit(B)  = default(1000 B);    // Maximum message size
+        int             maxMsgSize     @unit(B)  = default(1000 B);    // Maximum message size
         double          unordered                = default(0.0);       // Fraction of unordered messages (SCTP only)
         double          unreliable               = default(0.0);       // Fraction of unreliable messages (SCTP only)
         bool            decoupleSaturatedStreams = default(true);      // Apply buffer splitting when using multiple streams
 
     gates:
-        input  tcpIn;
-        output tcpOut;
-        input  sctpIn;
-        output sctpOut;
-        input  udpIn;
-        output udpOut;
+        input socketIn;
+        output socketOut;
 }
+

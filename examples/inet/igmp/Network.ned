@@ -1,25 +1,15 @@
 //
-// Copyright (C) 2013 Opensim Ltd.
+// Copyright (C) 2013 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
+
 
 package inet.examples.inet.igmp;
 
-import inet.networklayer.configurator.ipv4.IPv4NetworkConfigurator;
+import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
 import inet.node.ethernet.Eth100M;
-import inet.node.ethernet.EtherSwitch;
+import inet.node.ethernet.EthernetSwitch;
 import inet.node.inet.Router;
 import inet.node.inet.StandardHost;
 
@@ -31,25 +21,25 @@ network Network
 {
     submodules:
         Alice: StandardHost {
-            @display("p=76,62");
+            @display("p=250,100");
         }
         FITgate1: Router {
-            @display("p=314,58");
+            @display("p=550,100");
         }
         FITgate2: Router {
-            @display("p=314,168");
+            @display("p=550,200");
         }
         Bob: StandardHost {
-            @display("p=76,172");
+            @display("p=250,200");
         }
         Carlos: StandardHost {
-            @display("p=314,257");
+            @display("p=550,300");
         }
-        etherSwitch: EtherSwitch {
-            @display("p=203,124");
+        etherSwitch: EthernetSwitch {
+            @display("p=400,150");
         }
-        configurator: IPv4NetworkConfigurator {
-            @display("p=195,25");
+        configurator: Ipv4NetworkConfigurator {
+            @display("p=100,100;is=s");
             config = xmldoc("config.xml");
         }
     connections allowunconnected:

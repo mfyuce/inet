@@ -1,29 +1,17 @@
 //
-// Copyright (C) 2012 Opensim Ltd.
-// Author: Tamas Borbely
+// Copyright (C) 2012 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
+
 
 package inet.networklayer.diffserv;
 
-import inet.common.queue.DropTailQueue;
-import inet.common.queue.IOutputQueue;
-import inet.common.queue.PriorityScheduler;
-import inet.common.queue.Sink;
-import inet.common.queue.WRRScheduler;
-
+import inet.queueing.queue.CompoundPacketQueueBase;
+import inet.queueing.queue.DropTailQueue;
+import inet.queueing.scheduler.PriorityScheduler;
+import inet.queueing.scheduler.WrrScheduler;
+import inet.queueing.sink.PassivePacketSink;
 
 //
 // This is an example queue, that can be used in
@@ -50,73 +38,70 @@ import inet.common.queue.WRRScheduler;
 //
 // @see ~AFxyQueue
 //
-module DiffservQueue like IOutputQueue
+module DiffservQueue extends CompoundPacketQueueBase
 {
     parameters:
         string interfaceTableModule;
-        *.interfaceTableModule = default(absPath(interfaceTableModule));
-    gates:
-        input in;
-        output out;
+        *.interfaceTableModule = default(absPath(this.interfaceTableModule));
     submodules:
         classifier: BehaviorAggregateClassifier {
             dscps = "EF AF11 AF12 AF13 AF21 AF22 AF23 AF31 AF32 AF33 AF41 AF42 AF43";
-            @display("p=41,284");
+            @display("p=100,330");
         }
         efMeter: TokenBucketMeter {
             cir = default("10%"); // reserved EF bandwith as percentage of datarate of the interface
             cbs = default(5000B); // 5 1000B packets
-            @display("p=175,68");
+            @display("p=250,130");
         }
-        sink: Sink {
-            @display("p=259,145");
+        sink: PassivePacketSink {
+            @display("p=400,80");
         }
         efQueue: DropTailQueue {
-            frameCapacity = default(5); // keep low, for low delay and jitter
-            @display("p=345,68");
+            packetCapacity = default(5); // keep low, for low delay and jitter
+            @display("p=400,180");
         }
         af1xQueue: AFxyQueue {
-            @display("p=195,224");
+            @display("p=250,230");
         }
         af2xQueue: AFxyQueue {
-            @display("p=195,329");
+            @display("p=250,330");
         }
         af3xQueue: AFxyQueue {
-            @display("p=195,421");
+            @display("p=250,430");
         }
         af4xQueue: AFxyQueue {
-            @display("p=195,537");
+            @display("p=250,530");
         }
         beQueue: DropTailQueue {
-            @display("p=195,628");
+            @display("p=250,630");
         }
-        wrr: WRRScheduler {
+        wrr: WrrScheduler {
             weights = default("1 1 1 1 1");
-            @display("p=384,368");
+            @display("p=400,330");
         }
         priority: PriorityScheduler {
-            @display("p=556,263");
+            @display("p=550,330");
         }
 
     connections:
         in --> classifier.in;
-        classifier.outs++ --> efMeter.in++;
-        classifier.outs++ --> af1xQueue.afx1In;
-        classifier.outs++ --> af1xQueue.afx2In;
-        classifier.outs++ --> af1xQueue.afx3In;
-        classifier.outs++ --> af2xQueue.afx1In;
-        classifier.outs++ --> af2xQueue.afx2In;
-        classifier.outs++ --> af2xQueue.afx3In;
-        classifier.outs++ --> af3xQueue.afx1In;
-        classifier.outs++ --> af3xQueue.afx2In;
-        classifier.outs++ --> af3xQueue.afx3In;
-        classifier.outs++ --> af4xQueue.afx1In;
-        classifier.outs++ --> af4xQueue.afx2In;
-        classifier.outs++ --> af4xQueue.afx3In;
+        classifier.out++ --> efMeter.in;
+        classifier.out++ --> af1xQueue.afx1In;
+        classifier.out++ --> af1xQueue.afx2In;
+        classifier.out++ --> af1xQueue.afx3In;
+        classifier.out++ --> af2xQueue.afx1In;
+        classifier.out++ --> af2xQueue.afx2In;
+        classifier.out++ --> af2xQueue.afx3In;
+        classifier.out++ --> af3xQueue.afx1In;
+        classifier.out++ --> af3xQueue.afx2In;
+        classifier.out++ --> af3xQueue.afx3In;
+        classifier.out++ --> af4xQueue.afx1In;
+        classifier.out++ --> af4xQueue.afx2In;
+        classifier.out++ --> af4xQueue.afx3In;
         classifier.defaultOut --> beQueue.in;
 
         efMeter.greenOut --> { @display("ls=green"); } --> efQueue.in;
-        efMeter.redOut --> { @display("ls=red"); } --> sink.in++;
+        efMeter.redOut --> { @display("ls=red"); } --> sink.in;
 
         af1xQueue.out --> wrr.in++;
         af2xQueue.out --> wrr.in++;

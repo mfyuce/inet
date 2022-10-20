@@ -1,20 +1,9 @@
 //
-// Copyright (C) 2004 Andras Varga
+// Copyright (C) 2004 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-//
+
 
 
 
@@ -22,7 +11,7 @@
 
 package inet.examples.inet.flatnet;
 
-import inet.networklayer.configurator.ipv4.IPv4NetworkConfigurator;
+import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
 import inet.node.inet.Router;
 import inet.node.inet.StandardHost;
 import ned.DatarateChannel;
@@ -42,21 +31,19 @@ network FlatNet
             datarate = 10Mbps;
         }
     submodules:
-        configurator: IPv4NetworkConfigurator {
+        configurator: Ipv4NetworkConfigurator {
             parameters:
                 config = xml("<config><interface hosts='*' address='192.168.x.x' netmask='255.255.x.x'/></config>");
+                @display("p=100,100;is=s");
         }
-        rte[57]: Router {
-            parameters:
-                @display("is=vs");
-        }
+        rte[57]: Router;
         cli[2]: StandardHost {
             parameters:
-                @display("i=device/laptop_s");
+                @display("i=device/laptop");
         }
         srv: StandardHost {
             parameters:
-                @display("i=device/server_s");
+                @display("i=device/server");
         }
     connections:
         cli[0].pppg++ <--> ethernetline <--> rte[50].pppg++;

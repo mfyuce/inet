@@ -1,23 +1,13 @@
 //
 // Copyright (C) 2012 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
+
 
 package inet.examples.internetcloud.cloudandrouters;
 
-import inet.networklayer.configurator.ipv4.IPv4NetworkConfigurator;
+import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
 import inet.node.ethernet.Eth100M;
 import inet.node.inet.Router;
 import inet.node.inet.StandardHost;
@@ -37,16 +27,26 @@ network CloudAndRouters
             datarate = 5Mbps;
         }
     submodules:
-        configurator: IPv4NetworkConfigurator {
+        configurator: Ipv4NetworkConfigurator {
             parameters:
-                @display("p=61,163");
+                @display("p=100,70;is=s");
         }
 
-        srouter[numSenders]: Router;
-        sender[numSenders]: StandardHost;
-        rrouter: Router;
-        recip: StandardHost;
-        internet: InternetCloud;
+        srouter[numSenders]: Router {
+            @display("p=250,200,row,100");
+        }
+        sender[numSenders]: StandardHost {
+            @display("p=250,100,row,100");
+        }
+        rrouter: Router {
+            @display("p=250,600");
+        }
+        recip: StandardHost {
+            @display("p=250,700");
+        }
+        internet: InternetCloud {
+            @display("p=250,400;is=vl");
+        }
     connections:
         rrouter.pppg++ <--> C <--> internet.pppg++;
         recip.ethg++ <--> Eth100M <--> rrouter.ethg++;

@@ -1,18 +1,9 @@
 //
-// (C) 2013 Opensim Ltd.
+// Copyright (C) 2013 OpenSim Ltd.
 //
-// This library is free software, you can redistribute it
-// and/or modify
-// it under  the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation;
-// either version 2 of the License, or any later version.
-// The library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-// See the GNU Lesser General Public License for more details.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// Author: Andras Varga (andras@omnetpp.org)
-//
+
 
 #ifndef __INET_ILIFECYCLE_H
 #define __INET_ILIFECYCLE_H
@@ -55,10 +46,10 @@ class INET_API ILifecycle
      * Return value: true = "done"; false = "not yet done, will invoke
      * doneCallback when done"
      */
-    virtual bool handleOperationStage(LifecycleOperation *operation, int stage, IDoneCallback *doneCallback) = 0;
+    virtual bool handleOperationStage(LifecycleOperation *operation, IDoneCallback *doneCallback) = 0;
 };
 
 } // namespace inet
 
-#endif // ifndef __INET_ILIFECYCLE_H
+#endif
 

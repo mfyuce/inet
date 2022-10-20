@@ -1,21 +1,13 @@
 //
-// Copyright (C) 2006 Andras Varga
+// Copyright (C) 2006 OpenSim Ltd.
 //
-// This library is free software, you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation;
-// either version 2 of the License, or any later version.
-// The library is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-// See the GNU Lesser General Public License for more details.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-
 
 package inet.examples.ethernet.arptest;
 
-import inet.networklayer.configurator.ipv4.IPv4NetworkConfigurator;
-import inet.node.ethernet.EtherSwitch;
+import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
+import inet.node.ethernet.EthernetSwitch;
 import inet.node.inet.Router;
 import inet.node.inet.StandardHost;
 import ned.DatarateChannel;
@@ -36,28 +28,28 @@ network ARPTest
         }
     submodules:
         client: StandardHost {
-            @display("p=71,64;i=device/laptop_l");
+            @display("p=250,100;i=device/laptop");
         }
         host1: StandardHost {
-            @display("p=65,131;i=device/pc");
+            @display("p=250,200;i=device/pc");
         }
         host2: StandardHost {
-            @display("p=60,191;i=device/pc");
+            @display("p=250,300;i=device/pc");
         }
-        switch: EtherSwitch {
-            @display("p=202,156");
+        switch: EthernetSwitch {
+            @display("p=400,200");
         }
         net: Router {
-            @display("p=394,166");
+            @display("p=700,200");
         }
         router: Router {
-            @display("p=311,74");
+            @display("p=550,200");
         }
         server: StandardHost {
-            @display("p=512,58;i=device/server_l");
+            @display("p=850,200;i=device/server");
         }
-        configurator: IPv4NetworkConfigurator {
-            @display("p=495,160");
+        configurator: Ipv4NetworkConfigurator {
+            @display("p=100,100;is=s");
         }
     connections:
         client.ethg++ <--> ethline <--> switch.ethg++;

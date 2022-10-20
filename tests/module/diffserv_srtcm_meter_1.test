@@ -1,4 +1,5 @@
-%description: Simple test for SingleRateThreeColorMeter.
+%description:
+Simple test for SingleRateThreeColorMeter.
 
 This file implements the test case described in
   Sanjay Ramroop: Performance evaluation of DiffServ networks using the ns-3 simulator
@@ -6,6 +7,7 @@ This file implements the test case described in
 
 %file: TestNetwork.ned
 
+import inet.test.moduletest.lib.*;
 import inet.networklayer.diffserv.SingleRateThreeColorMeter;
 
 network TestNetwork
@@ -18,7 +20,7 @@ network TestNetwork
     meter: SingleRateThreeColorMeter;
 
   connections allowunconnected:
-    app.out --> meter.in++;
+    app.out --> meter.in;
     meter.greenOut --> app.in++;
     meter.yellowOut --> app.in++;
     meter.redOut --> app.in++;
@@ -59,8 +61,7 @@ packet-8    Green
 packet-9    Red
 packet-10   Green
 %#--------------------------------------------------------------------------------------------------------------
-%not-contains: stdout
-undisposed object:
-%not-contains: stdout
--- check module destructor
+%postrun-command: grep "undisposed object:" test.out > test_undisposed.out || true
+%not-contains: test_undisposed.out
+undisposed object: (
 %#--------------------------------------------------------------------------------------------------------------

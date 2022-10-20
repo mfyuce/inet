@@ -1,25 +1,15 @@
 //
-// Copyright (C) 2013 OpenSim Ltd
+// Copyright (C) 2013 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU Lesser General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-//
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program; if not, see <http://www.gnu.org/licenses/>.
-//
+
 
 #ifndef __INET_TRANSPORTPROTOCOLBASE_H
 #define __INET_TRANSPORTPROTOCOLBASE_H
 
 #include "inet/common/LayeredProtocolBase.h"
-#include "inet/common/lifecycle/NodeOperations.h"
+#include "inet/common/lifecycle/ModuleOperations.h"
 
 namespace inet {
 
@@ -29,12 +19,15 @@ class INET_API TransportProtocolBase : public LayeredProtocolBase
     TransportProtocolBase() {};
 
   protected:
-    virtual bool isInitializeStage(int stage) override { return stage == INITSTAGE_TRANSPORT_LAYER; }
-    virtual bool isNodeStartStage(int stage) override { return stage == NodeStartOperation::STAGE_TRANSPORT_LAYER; }
-    virtual bool isNodeShutdownStage(int stage) override { return stage == NodeShutdownOperation::STAGE_TRANSPORT_LAYER; }
+    virtual bool isUpperMessage(cMessage *message) const override;
+    virtual bool isLowerMessage(cMessage *message) const override;
+
+    virtual bool isInitializeStage(int stage) const override;
+    virtual bool isModuleStartStage(int stage) const override;
+    virtual bool isModuleStopStage(int stage) const override;
 };
 
 } // namespace inet
 
-#endif // ifndef __INET_TRANSPORTPROTOCOLBASE_H
+#endif
 

@@ -1,26 +1,14 @@
 //
-// Copyright (C) 2012 Opensim Ltd.
-// Author: Tamas Borbely
+// Copyright (C) 2012 OpenSim Ltd.
 //
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
+// SPDX-License-Identifier: LGPL-3.0-or-later
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-//
+
 
 package inet.examples.diffserv.simple_;
 
-import inet.networklayer.configurator.ipv4.IPv4NetworkConfigurator;
-import inet.node.ethernet.EtherSwitch;
+import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
+import inet.node.ethernet.EthernetSwitch;
 import inet.node.inet.Router;
 import inet.node.inet.StandardHost;
 import ned.DatarateChannel;
@@ -32,7 +20,7 @@ import ned.DatarateChannel;
 //
 // The dialup connection is the bottleneck of the traffic from the clients
 // to the server. Without QoS, high traffic can cause random packet drops
-// at the router PPP interface.
+// at the router Ppp interface.
 //
 network DiffservNetwork
 {
@@ -51,17 +39,19 @@ network DiffservNetwork
         }
     submodules:
         router: Router {
-            @display("p=318,108");
+            @display("p=550,100");
         }
-        client[numClients]: StandardHost;
+        client[numClients]: StandardHost {
+            @display("p=250,100,col,100");
+        }
         server: StandardHost {
-            @display("p=436,108");
+            @display("p=700,100");
         }
-        configurator: IPv4NetworkConfigurator {
-            @display("p=181,21");
+        configurator: Ipv4NetworkConfigurator {
+            @display("is=s;p=100,100");
         }
-        etherSwitch: EtherSwitch {
-            @display("p=198,107");
+        etherSwitch: EthernetSwitch {
+            @display("p=400,100");
         }
     connections:
         router.pppg++ <--> dialup <--> server.pppg++;

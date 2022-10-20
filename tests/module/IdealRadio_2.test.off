@@ -17,9 +17,6 @@ network = NetIdealRadios
 num-rngs = 3
 **.mobility.rng-0 = 1
 **.wlan[*].mac.rng-0 = 2
-#debug-on-errors = true
-
-tkenv-plugin-path = ../../../etc/plugins
 
 **.constraintAreaMinX = 0m
 **.constraintAreaMinY = 0m
@@ -82,8 +79,7 @@ scalar NetIdealRadios.host[1].udpApp[0] 	sentPk:count 	10000
 %contains: results/General-0.sca
 scalar NetIdealRadios.host[2].udpApp[0] 	sentPk:count 	10000
 %#--------------------------------------------------------------------------------------------------------------
-%not-contains: stdout
-undisposed object:
-%not-contains: stdout
--- check module destructor
+%postrun-command: grep "undisposed object:" test.out > test_undisposed.out || true
+%not-contains: test_undisposed.out
+undisposed object: (
 %#--------------------------------------------------------------------------------------------------------------
